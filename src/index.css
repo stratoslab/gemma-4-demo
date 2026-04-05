@@ -111,6 +111,27 @@ video {
   font-size: 0.95rem;
 }
 
+.preflight-tools {
+  width: min(640px, 100%);
+  margin: 20px auto 0;
+  display: grid;
+  gap: 12px;
+  text-align: left;
+}
+
+.preflight-tools.compact {
+  width: min(680px, calc(100vw - 32px));
+}
+
+.preflight-actions {
+  display: flex;
+  justify-content: center;
+}
+
+.preflight-button {
+  min-width: 180px;
+}
+
 .brand-mark {
   display: block;
 }
@@ -491,6 +512,10 @@ video {
 
   .landing-panel {
     padding: 28px 20px;
+  }
+
+  .preflight-tools.compact {
+    width: min(680px, calc(100vw - 24px));
   }
 
   .footer-row {

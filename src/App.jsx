@@ -6,7 +6,40 @@ const EXAMPLES = [
   "Describe what you see and suggest a next operational step.",
 ];
 
-function Landing({ onStart, supported }) {
+function PreflightTools({
+  loadingMessage,
+  errorMessage,
+  diagnostics,
+  connectivityResults,
+  onConnectivityCheck,
+  compact = false,
+}) {
+  return (
+    <div className={`preflight-tools ${compact ? "compact" : ""}`}>
+      <div className="preflight-actions">
+        <button className="icon-button preflight-button" onClick={onConnectivityCheck}>
+          Test connectivity
+        </button>
+      </div>
+      <DiagnosticsPanel
+        loadingMessage={loadingMessage}
+        errorMessage={errorMessage}
+        diagnostics={diagnostics}
+      />
+      <ConnectivityResults results={connectivityResults} />
+    </div>
+  );
+}
+
+function Landing({
+  onStart,
+  onConnectivityCheck,
+  supported,
+  loadingMessage,
+  errorMessage,
+  diagnostics,
+  connectivityResults,
+}) {
   return (
     <div className="screen landing">
       <div className="landing-bg" />
@@ -25,12 +58,26 @@ function Landing({ onStart, supported }) {
         <p className="meta-line">
           Uses Transformers.js and ONNX Runtime Web. No prompts or media leave this device.
         </p>
+        <PreflightTools
+          loadingMessage={loadingMessage}
+          errorMessage={errorMessage}
+          diagnostics={diagnostics}
+          connectivityResults={connectivityResults}
+          onConnectivityCheck={onConnectivityCheck}
+        />
       </div>
     </div>
   );
 }
 
-function LoadingScreen({ progress }) {
+function LoadingScreen({
+  progress,
+  loadingMessage,
+  errorMessage,
+  diagnostics,
+  connectivityResults,
+  onConnectivityCheck,
+}) {
   const rounded = Math.round(progress);
   return (
     <div className="screen loading-screen">
@@ -41,6 +88,14 @@ function LoadingScreen({ progress }) {
       </div>
       <p className="progress-value">{rounded}%</p>
       <p className="meta-line">Gemma 4 loads locally and is cached after first run.</p>
+      <PreflightTools
+        compact
+        loadingMessage={loadingMessage}
+        errorMessage={errorMessage}
+        diagnostics={diagnostics}
+        connectivityResults={connectivityResults}
+        onConnectivityCheck={onConnectivityCheck}
+      />
     </div>
   );
 }
@@ -415,8 +470,27 @@ function App() {
 
   return (
     <>
-      {phase === "landing" && <Landing onStart={requestLoad} supported={supported} />}
-      {phase === "loading" && <LoadingScreen progress={progress} />}
+      {phase === "landing" && (
+        <Landing
+          onStart={requestLoad}
+          onConnectivityCheck={runConnectivityCheck}
+          supported={supported}
+          loadingMessage={loadingMessage}
+          errorMessage={mediaError}
+          diagnostics={diagnostics}
+          connectivityResults={connectivityResults}
+        />
+      )}
+      {phase === "loading" && (
+        <LoadingScreen
+          progress={progress}
+          loadingMessage={loadingMessage}
+          errorMessage={mediaError}
+          diagnostics={diagnostics}
+          connectivityResults={connectivityResults}
+          onConnectivityCheck={runConnectivityCheck}
+        />
+      )}
       {phase === "app" && (
         <div className="screen app-shell">
           <video
