@@ -1,0 +1,465 @@
+:root {
+  color-scheme: dark;
+  --bg: #0a0e14;
+  --surface: rgba(16, 24, 38, 0.84);
+  --surface-strong: rgba(20, 34, 51, 0.92);
+  --text: #f5f7fb;
+  --muted: #8fa8c0;
+  --outline: rgba(0, 217, 255, 0.16);
+  --blue: #00d9ff;
+  --green: #00d4aa;
+  --orange: #fc5d0d;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  margin: 0;
+  min-height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font-family: "Outfit", system-ui, sans-serif;
+}
+
+button,
+textarea,
+input {
+  font: inherit;
+}
+
+img,
+video {
+  max-width: 100%;
+}
+
+.screen {
+  min-height: 100vh;
+}
+
+.landing {
+  position: relative;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+}
+
+.landing-bg {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at top right, rgba(0, 217, 255, 0.18), transparent 32%),
+    radial-gradient(circle at bottom left, rgba(0, 212, 170, 0.18), transparent 28%),
+    url("/background.jpg") center / cover no-repeat;
+  transform: scale(1.05);
+}
+
+.landing-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(10, 14, 20, 0.55), rgba(10, 14, 20, 0.88));
+}
+
+.landing-panel,
+.loading-screen,
+.chat-shell,
+.empty-state {
+  position: relative;
+  z-index: 1;
+}
+
+.landing-panel {
+  width: min(720px, calc(100vw - 48px));
+  padding: 40px;
+  border: 1px solid var(--outline);
+  border-radius: 28px;
+  background: linear-gradient(180deg, rgba(16, 24, 38, 0.7), rgba(10, 14, 20, 0.82));
+  backdrop-filter: blur(20px);
+  text-align: center;
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.35);
+}
+
+.eyebrow {
+  margin: 0 0 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--blue);
+  font-size: 0.86rem;
+}
+
+.landing-panel h1,
+.loading-screen h2 {
+  margin: 0;
+  font-size: clamp(2.8rem, 7vw, 5rem);
+  line-height: 0.95;
+}
+
+.subhead {
+  margin: 18px auto 28px;
+  max-width: 580px;
+  font-size: 1.1rem;
+  line-height: 1.65;
+  color: var(--muted);
+}
+
+.meta-line {
+  margin: 14px 0 0;
+  color: var(--muted);
+  font-size: 0.95rem;
+}
+
+.brand-mark {
+  display: block;
+}
+
+.hero-mark {
+  height: 86px;
+  width: auto;
+  margin: 0 auto 14px;
+}
+
+.loading-screen {
+  display: grid;
+  place-items: center;
+  gap: 16px;
+  padding: 40px 24px;
+  background:
+    radial-gradient(circle at top, rgba(0, 217, 255, 0.14), transparent 38%),
+    linear-gradient(180deg, #0a0e14, #0f1623);
+}
+
+.loading-mark {
+  height: 48px;
+  width: auto;
+}
+
+.progress-shell {
+  width: min(420px, calc(100vw - 48px));
+  height: 12px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.progress-bar {
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--blue), var(--green));
+}
+
+.progress-value {
+  margin: 0;
+  font-weight: 700;
+  font-size: 1.6rem;
+}
+
+.app-shell {
+  position: relative;
+  overflow: hidden;
+  background: #081018;
+}
+
+.video-stage {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  background:
+    radial-gradient(circle at top, rgba(0, 217, 255, 0.06), transparent 40%),
+    #081018;
+}
+
+.video-stage.mirror {
+  transform: scaleX(-1);
+}
+
+.hidden-canvas,
+.hidden-input {
+  display: none;
+}
+
+.chrome-top {
+  position: absolute;
+  inset: 0 0 auto 0;
+  padding: 24px;
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.42), transparent);
+  z-index: 2;
+}
+
+.brand-lockup {
+  display: inline-flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.brand-mark.small {
+  height: 36px;
+}
+
+.brand-mark.medium {
+  height: 52px;
+  margin: 0 auto 18px;
+}
+
+.brand-title {
+  font-size: 1.2rem;
+  font-weight: 700;
+}
+
+.brand-subtitle {
+  color: var(--muted);
+  font-size: 0.92rem;
+}
+
+.empty-state {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  text-align: center;
+  background: linear-gradient(180deg, rgba(10, 14, 20, 0.82), rgba(10, 14, 20, 0.95));
+}
+
+.empty-state > div,
+.empty-state > p,
+.empty-state > h2 {
+  max-width: 680px;
+}
+
+.empty-state h2 {
+  margin: 0;
+  font-size: clamp(2rem, 5vw, 3rem);
+}
+
+.empty-state p {
+  color: var(--muted);
+  font-size: 1rem;
+  line-height: 1.6;
+}
+
+.empty-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.glass-button,
+.primary-button,
+.icon-button,
+.example-chip {
+  border: 1px solid var(--outline);
+  border-radius: 16px;
+  cursor: pointer;
+  transition: transform 0.18s ease, border-color 0.18s ease, background 0.18s ease;
+}
+
+.glass-button:hover,
+.primary-button:hover,
+.icon-button:hover,
+.example-chip:hover {
+  transform: translateY(-1px);
+  border-color: rgba(0, 217, 255, 0.35);
+}
+
+.glass-button {
+  padding: 14px 20px;
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text);
+}
+
+.primary-button {
+  padding: 14px 22px;
+  background: linear-gradient(90deg, var(--blue), var(--green));
+  color: #031019;
+  font-weight: 700;
+  border: 0;
+}
+
+.primary-button.compact {
+  padding: 12px 18px;
+}
+
+.primary-button.danger {
+  background: linear-gradient(90deg, #ff7d4d, var(--orange));
+}
+
+.chat-shell {
+  position: absolute;
+  inset: auto 24px 24px 24px;
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.chat-log {
+  max-height: min(48vh, 520px);
+  overflow-y: auto;
+  padding: 10px;
+  border-radius: 28px;
+  border: 1px solid var(--outline);
+  background: rgba(9, 15, 24, 0.72);
+  backdrop-filter: blur(18px);
+}
+
+.example-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.example-chip {
+  padding: 10px 14px;
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text);
+}
+
+.bubble-row {
+  display: flex;
+  margin: 8px 0;
+}
+
+.bubble-row.user {
+  justify-content: flex-end;
+}
+
+.bubble {
+  max-width: min(760px, 88%);
+  padding: 14px 16px;
+  border-radius: 22px;
+  line-height: 1.6;
+}
+
+.bubble.user {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.bubble.assistant {
+  background: rgba(0, 217, 255, 0.08);
+  border: 1px solid rgba(0, 217, 255, 0.14);
+}
+
+.bubble-image {
+  margin-bottom: 10px;
+  width: 220px;
+  border-radius: 14px;
+}
+
+.audio-chip {
+  display: inline-block;
+  margin-bottom: 8px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: rgba(0, 212, 170, 0.14);
+  color: var(--green);
+  font-size: 0.86rem;
+}
+
+.thinking-box {
+  overflow: auto;
+  margin: 0 0 10px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--muted);
+  white-space: pre-wrap;
+}
+
+.bubble-text {
+  white-space: pre-wrap;
+}
+
+.composer {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  border-radius: 24px;
+  border: 1px solid var(--outline);
+  background: rgba(9, 15, 24, 0.82);
+  backdrop-filter: blur(18px);
+}
+
+.composer textarea {
+  width: 100%;
+  min-height: 52px;
+  max-height: 180px;
+  resize: vertical;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--text);
+}
+
+.composer textarea::placeholder {
+  color: var(--muted);
+}
+
+.composer-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+.icon-button {
+  padding: 10px 14px;
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text);
+}
+
+.icon-button.active {
+  background: rgba(0, 217, 255, 0.12);
+  color: var(--blue);
+}
+
+.footer-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.scan-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  display: grid;
+  place-items: center;
+  gap: 16px;
+  background: rgba(10, 14, 20, 0.45);
+  backdrop-filter: blur(6px);
+}
+
+.scan-preview {
+  width: min(420px, calc(100vw - 48px));
+  border-radius: 22px;
+  border: 1px solid rgba(0, 217, 255, 0.24);
+  box-shadow: 0 0 0 1px rgba(0, 217, 255, 0.08), 0 24px 80px rgba(0, 0, 0, 0.35);
+}
+
+.scan-label {
+  color: var(--text);
+  font-size: 0.95rem;
+}
+
+@media (max-width: 840px) {
+  .chat-shell {
+    inset: auto 12px 12px 12px;
+  }
+
+  .landing-panel {
+    padding: 28px 20px;
+  }
+
+  .footer-row {
+    flex-direction: column;
+  }
+}
