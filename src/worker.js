@@ -7,6 +7,45 @@ import {
 } from "@huggingface/transformers";
 
 const MODEL_ID = "onnx-community/gemma-4-E2B-it-ONNX";
+const CONNECTIVITY_URLS = [
+  "https://huggingface.co/onnx-community/gemma-4-E2B-it-ONNX/resolve/main/config.json",
+  "https://huggingface.co/onnx-community/gemma-4-E2B-it-ONNX/resolve/main/processor_config.json",
+];
+
+const originalFetch = globalThis.fetch.bind(globalThis);
+
+globalThis.fetch = async (input, init) => {
+  const url = typeof input === "string" ? input : input?.url ?? String(input);
+  try {
+    const response = await originalFetch(input, init);
+    if (!response.ok) {
+      self.postMessage({
+        status: "debug",
+        data: {
+          phase: "fetch",
+          message: `Fetch failed (${response.status}) for ${url}`,
+          url,
+        },
+      });
+    } else if (!response.headers.get("content-length")) {
+      self.postMessage({
+        status: "debug",
+        data: {
+          phase: "fetch",
+          message: `No content-length header for ${url}`,
+          url,
+        },
+      });
+    }
+    return response;
+  } catch (error) {
+    self.postMessage({
+      status: "error",
+      data: `Fetch error for ${url}: ${error instanceof Error ? error.message : String(error)}`,
+    });
+    throw error;
+  }
+};
 
 class ModelSession {
   constructor() {
@@ -211,6 +250,32 @@ async function generate(messages, enableThinking) {
   });
 }
 
+async function runConnectivityCheck() {
+  const results = [];
+  for (const url of CONNECTIVITY_URLS) {
+    try {
+      const response = await originalFetch(url, { method: "HEAD" });
+      results.push({
+        url,
+        ok: response.ok,
+        status: response.status,
+      });
+    } catch (error) {
+      results.push({
+        url,
+        ok: false,
+        status: "network-error",
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }
+
+  self.postMessage({
+    status: "connectivity-result",
+    data: results,
+  });
+}
+
 self.addEventListener("message", async (event) => {
   const { type, data } = event.data;
 
@@ -230,6 +295,9 @@ self.addEventListener("message", async (event) => {
         break;
       case "interrupt":
         session.interrupt();
+        break;
+      case "connectivity-check":
+        await runConnectivityCheck();
         break;
       case "reset":
         session.reset();

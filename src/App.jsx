@@ -74,6 +74,24 @@ function DiagnosticsPanel({ loadingMessage, errorMessage, diagnostics }) {
   );
 }
 
+function ConnectivityResults({ results }) {
+  if (!results.length) {
+    return null;
+  }
+
+  return (
+    <div className="diagnostics">
+      <div className="diagnostics-title">Connectivity check</div>
+      {results.map((result) => (
+        <div key={result.url} className="diagnostics-line">
+          {result.ok ? "OK" : "FAIL"} {result.status} {result.url}
+          {result.error ? ` — ${result.error}` : ""}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function MessageBubble({ message }) {
   return (
     <div className={`bubble-row ${message.role === "user" ? "user" : "assistant"}`}>
@@ -125,6 +143,7 @@ function App() {
   const [scanFrame, setScanFrame] = useState(null);
   const [recording, setRecording] = useState(false);
   const [diagnostics, setDiagnostics] = useState([]);
+  const [connectivityResults, setConnectivityResults] = useState([]);
 
   const mediaStreamRef = useRef(null);
   const videoObjectUrlRef = useRef(null);
@@ -166,6 +185,13 @@ function App() {
         case "ready":
           setPhase("app");
           setLoadingMessage("Model ready.");
+          break;
+        case "connectivity-result":
+          setConnectivityResults(event.data.data ?? []);
+          setDiagnostics((current) => [
+            ...current.slice(-9),
+            "Connectivity check completed.",
+          ]);
           break;
         case "start":
           setIsRunning(true);
@@ -235,6 +261,12 @@ function App() {
 
   const requestLoad = () => {
     workerRef.current?.postMessage({ type: "load" });
+  };
+
+  const runConnectivityCheck = () => {
+    setConnectivityResults([]);
+    setDiagnostics((current) => [...current.slice(-9), "Running connectivity check..."]);
+    workerRef.current?.postMessage({ type: "connectivity-check" });
   };
 
   const captureFrame = () => {
@@ -446,6 +478,7 @@ function App() {
               errorMessage={mediaError}
               diagnostics={diagnostics}
             />
+            <ConnectivityResults results={connectivityResults} />
             <div className="chat-log" ref={chatScrollRef}>
               {messages.length === 0 && (
                 <div className="example-list">
@@ -481,6 +514,9 @@ function App() {
               />
 
               <div className="composer-actions">
+                <button className="icon-button" onClick={runConnectivityCheck}>
+                  Test connectivity
+                </button>
                 <button className="icon-button" onClick={toggleRecording}>
                   {recording ? "Stop Mic" : "Mic"}
                 </button>
