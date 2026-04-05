@@ -224,13 +224,14 @@ function App() {
 
   const sendMessage = async ({ text = input, image = null, audio = null, hideText = false } = {}) => {
     const content = text.trim();
-    if (isRunning || (!content && !image && !audio)) {
+    const attachedFrame = image ?? (videoSource ? captureFrame() : null);
+    if (isRunning || (!content && !attachedFrame && !audio)) {
       return;
     }
 
     const modelContent = [];
-    if (image) {
-      modelContent.push({ type: "image", image });
+    if (attachedFrame) {
+      modelContent.push({ type: "image", image: attachedFrame });
     }
     if (audio) {
       modelContent.push({ type: "audio", audio });
@@ -244,7 +245,7 @@ function App() {
       id: crypto.randomUUID(),
       role: "user",
       content,
-      image,
+      image: attachedFrame,
       audio,
       hideText,
     };
