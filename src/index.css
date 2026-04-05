@@ -31,6 +31,10 @@ input {
   font: inherit;
 }
 
+code {
+  font-family: "IBM Plex Mono", "SFMono-Regular", monospace;
+}
+
 img,
 video {
   max-width: 100%;
@@ -505,6 +509,181 @@ video {
   font-size: 0.95rem;
 }
 
+.benchmark-shell {
+  min-height: 100vh;
+  padding: 40px 24px 64px;
+  background:
+    radial-gradient(circle at top right, rgba(0, 217, 255, 0.14), transparent 24%),
+    radial-gradient(circle at bottom left, rgba(252, 93, 13, 0.14), transparent 22%),
+    linear-gradient(180deg, #09111a, #05090f 62%);
+}
+
+.benchmark-hero {
+  width: min(900px, 100%);
+  margin: 0 auto 28px;
+}
+
+.benchmark-hero h1 {
+  margin: 0;
+  font-size: clamp(2.6rem, 6vw, 4.8rem);
+  line-height: 0.95;
+}
+
+.benchmark-grid,
+.benchmark-results {
+  width: min(1280px, 100%);
+  margin: 0 auto;
+  display: grid;
+  gap: 18px;
+}
+
+.benchmark-grid {
+  grid-template-columns: minmax(0, 1.4fr) minmax(320px, 0.9fr);
+  align-items: start;
+}
+
+.benchmark-results {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin-top: 18px;
+}
+
+.benchmark-card {
+  border: 1px solid var(--outline);
+  border-radius: 24px;
+  background: linear-gradient(180deg, rgba(11, 19, 29, 0.92), rgba(8, 13, 22, 0.96));
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.28);
+  backdrop-filter: blur(18px);
+}
+
+.controls-card,
+.telemetry-card,
+.result-card {
+  padding: 22px;
+}
+
+.controls-card {
+  display: grid;
+  gap: 16px;
+}
+
+.controls-card label,
+.controls-card textarea,
+.controls-card input {
+  width: 100%;
+}
+
+.controls-card label {
+  display: grid;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 0.92rem;
+}
+
+.controls-card input,
+.controls-card textarea {
+  border: 1px solid rgba(143, 168, 192, 0.18);
+  border-radius: 14px;
+  padding: 14px 16px;
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--text);
+  resize: vertical;
+}
+
+.control-row {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.benchmark-actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.benchmark-status {
+  margin: 0;
+  color: var(--blue);
+}
+
+.telemetry-card h2,
+.result-card h3 {
+  margin: 0 0 12px;
+}
+
+.event-list {
+  display: grid;
+  gap: 8px;
+}
+
+.event-item {
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--text);
+}
+
+.event-item.muted {
+  color: var(--muted);
+}
+
+.benchmark-summary {
+  width: min(1280px, 100%);
+  margin: 18px auto 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.summary-pill {
+  padding: 10px 14px;
+  border-radius: 999px;
+  border: 1px solid rgba(0, 217, 255, 0.16);
+  background: rgba(0, 217, 255, 0.06);
+  color: var(--text);
+}
+
+.result-header,
+.result-meta {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+}
+
+.result-meta {
+  margin: 0 0 14px;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.result-metric {
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: var(--blue);
+}
+
+.stats-box,
+.result-output pre,
+.error-box {
+  overflow: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+  border-radius: 16px;
+  padding: 14px;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.result-output {
+  display: grid;
+  gap: 8px;
+}
+
+.error-box {
+  color: #ffb2a3;
+  border: 1px solid rgba(252, 93, 13, 0.25);
+}
+
 @media (max-width: 840px) {
   .chat-shell {
     inset: auto 12px 12px 12px;
@@ -520,5 +699,11 @@ video {
 
   .footer-row {
     flex-direction: column;
+  }
+
+  .benchmark-grid,
+  .benchmark-results,
+  .control-row {
+    grid-template-columns: 1fr;
   }
 }
