@@ -1,9 +1,10 @@
 import {
-  AutoModelForImageTextToText,
   AutoProcessor,
+  Gemma4ForConditionalGeneration,
   InterruptableStoppingCriteria,
   TextStreamer,
   load_image,
+  read_audio,
 } from "@huggingface/transformers";
 
 const MODEL_ID = "onnx-community/gemma-4-E2B-it-ONNX";
@@ -117,41 +118,35 @@ class ModelSession {
       data: "Loading Gemma 4 for local WebGPU inference...",
     });
 
+    const progress_callback = (info) => {
+      postDebug(
+        info.status === "download"
+          ? `Downloading ${info.name ?? "model file"}...`
+          : info.status === "progress_total"
+            ? `Loading model assets: ${Math.round(info.progress ?? 0)}%`
+            : `Model loader status: ${info.status}`,
+        { phase: "progress", info },
+      );
+
+      if (info.status === "progress_total") {
+        self.postMessage({
+          status: "progress",
+          progress: info.progress,
+        });
+      } else if (info.status === "download") {
+        self.postMessage({
+          status: "loading",
+          data: `Downloading ${info.name ?? "model shard"}...`,
+        });
+      }
+    };
+
     this.loadingPromise = Promise.all([
-      AutoProcessor.from_pretrained(MODEL_ID),
-      AutoModelForImageTextToText.from_pretrained(MODEL_ID, {
-        dtype: {
-          audio_encoder: "fp16",
-          vision_encoder: "fp16",
-          embed_tokens: "q4f16",
-          decoder_model_merged: "q4f16",
-        },
+      AutoProcessor.from_pretrained(MODEL_ID, { progress_callback }),
+      Gemma4ForConditionalGeneration.from_pretrained(MODEL_ID, {
+        dtype: "q4f16",
         device: "webgpu",
-        progress_callback: (info) => {
-          self.postMessage({
-            status: "debug",
-            data: {
-              phase: "progress",
-              message:
-                info.status === "download"
-                  ? `Downloading ${info.name ?? "model file"}...`
-                  : info.status === "progress_total"
-                    ? `Loading model assets: ${Math.round(info.progress ?? 0)}%`
-                    : `Model loader status: ${info.status}`,
-            },
-          });
-          if (info.status === "progress_total") {
-            self.postMessage({
-              status: "progress",
-              progress: info.progress,
-            });
-          } else if (info.status === "download") {
-            self.postMessage({
-              status: "loading",
-              data: `Downloading ${info.name ?? "model shard"}...`,
-            });
-          }
-        },
+        progress_callback,
       }),
     ])
       .then(([processor, model]) => {
@@ -233,9 +228,12 @@ async function prepareInputs(messages, enableThinking) {
   const latestUser = [...messages].reverse().find((message) => message.role === "user");
 
   const image = latestUser?.image ? await load_image(latestUser.image) : null;
-  const audio = latestUser?.audio
-    ? new Float32Array(latestUser.audio)
-    : null;
+  const audio =
+    typeof latestUser?.audio === "string"
+      ? await read_audio(latestUser.audio, 16000)
+      : latestUser?.audio
+        ? new Float32Array(latestUser.audio)
+        : null;
 
   return session.processor(prompt, image, audio, {
     add_special_tokens: false,
