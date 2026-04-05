@@ -547,6 +547,10 @@ video {
   margin-top: 18px;
 }
 
+.benchmark-results.benchmark-results-stacked {
+  grid-template-columns: 1fr;
+}
+
 .benchmark-card {
   border: 1px solid var(--outline);
   border-radius: 24px;
@@ -557,7 +561,9 @@ video {
 
 .controls-card,
 .telemetry-card,
-.result-card {
+.result-card,
+.table-card,
+.case-card {
   padding: 22px;
 }
 
@@ -595,6 +601,43 @@ video {
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
+.control-row.two-up {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.case-picker {
+  display: grid;
+  gap: 10px;
+}
+
+.case-picker h2 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.check-row {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.check-row input {
+  width: auto;
+  margin-top: 3px;
+}
+
+.check-row span {
+  display: grid;
+  gap: 4px;
+}
+
+.check-row small {
+  color: var(--muted);
+}
+
 .benchmark-actions {
   display: flex;
   gap: 12px;
@@ -625,6 +668,29 @@ video {
 
 .event-item.muted {
   color: var(--muted);
+}
+
+.table-wrap {
+  overflow: auto;
+}
+
+.benchmark-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.94rem;
+}
+
+.benchmark-table th,
+.benchmark-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid rgba(143, 168, 192, 0.12);
+  text-align: left;
+  vertical-align: top;
+}
+
+.benchmark-table th {
+  color: var(--muted);
+  font-weight: 600;
 }
 
 .benchmark-summary {
@@ -679,6 +745,55 @@ video {
   gap: 8px;
 }
 
+.case-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: flex-start;
+  margin-bottom: 12px;
+}
+
+.case-header h3 {
+  margin: 0 0 4px;
+}
+
+.case-chip {
+  white-space: nowrap;
+  padding: 8px 12px;
+  border-radius: 999px;
+  background: rgba(0, 217, 255, 0.08);
+  color: var(--blue);
+}
+
+.prompt-details,
+.result-details {
+  margin-top: 14px;
+}
+
+.prompt-details summary,
+.result-details summary {
+  cursor: pointer;
+  color: var(--blue);
+}
+
+.prompt-details pre,
+.result-details pre {
+  margin: 12px 0 0;
+  padding: 14px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.04);
+  white-space: pre-wrap;
+  word-break: break-word;
+  overflow: auto;
+}
+
+.detail-grid {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin-top: 12px;
+}
+
 .error-box {
   color: #ffb2a3;
   border: 1px solid rgba(252, 93, 13, 0.25);
@@ -703,7 +818,8 @@ video {
 
   .benchmark-grid,
   .benchmark-results,
-  .control-row {
+  .control-row,
+  .detail-grid {
     grid-template-columns: 1fr;
   }
 }
