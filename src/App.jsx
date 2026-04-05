@@ -553,83 +553,85 @@ function App() {
             </div>
           )}
 
-          <div className="chat-shell">
-            <DiagnosticsPanel
-              loadingMessage={loadingMessage}
-              errorMessage={mediaError}
-              diagnostics={diagnostics}
-            />
-            <ConnectivityResults results={connectivityResults} />
-            <div className="chat-log" ref={chatScrollRef}>
-              {messages.length === 0 && (
-                <div className="example-list">
-                  {starterExamples.map((example) => (
-                    <button
-                      key={example}
-                      className="example-chip"
-                      onClick={() => sendMessage({ text: example })}
-                    >
-                      {example}
-                    </button>
-                  ))}
-                </div>
-              )}
-
-              {messages.map((message) => (
-                <MessageBubble key={message.id} message={message} />
-              ))}
-            </div>
-
-            <div className="composer">
-              <textarea
-                rows={1}
-                value={input}
-                onChange={(event) => setInput(event.target.value)}
-                onKeyDown={(event) => {
-                  if (event.key === "Enter" && !event.shiftKey) {
-                    event.preventDefault();
-                    sendMessage();
-                  }
-                }}
-                placeholder="Ask Stratos AI anything..."
+          {videoSource && (
+            <div className="chat-shell">
+              <DiagnosticsPanel
+                loadingMessage={loadingMessage}
+                errorMessage={mediaError}
+                diagnostics={diagnostics}
               />
-
-              <div className="composer-actions">
-                <button className="icon-button" onClick={runConnectivityCheck}>
-                  Test connectivity
-                </button>
-                <button className="icon-button" onClick={toggleRecording}>
-                  {recording ? "Stop Mic" : "Mic"}
-                </button>
-                <button className="icon-button" onClick={triggerScan}>
-                  Scan
-                </button>
-                <button
-                  className={`icon-button ${enableThinking ? "active" : ""}`}
-                  onClick={() => setEnableThinking((value) => !value)}
-                >
-                  Think
-                </button>
-                {isRunning ? (
-                  <button className="primary-button danger" onClick={() => workerRef.current?.postMessage({ type: "interrupt" })}>
-                    Stop
-                  </button>
-                ) : (
-                  <button className="primary-button compact" onClick={() => sendMessage()}>
-                    Send
-                  </button>
+              <ConnectivityResults results={connectivityResults} />
+              <div className="chat-log" ref={chatScrollRef}>
+                {messages.length === 0 && (
+                  <div className="example-list">
+                    {starterExamples.map((example) => (
+                      <button
+                        key={example}
+                        className="example-chip"
+                        onClick={() => sendMessage({ text: example })}
+                      >
+                        {example}
+                      </button>
+                    ))}
+                  </div>
                 )}
-              </div>
-            </div>
 
-            <div className="footer-row">
-              <div>{loadingMessage || mediaError}</div>
-              <div>
-                {tps ? `${tps.toFixed(2)} tokens/s` : ""}
-                {numTokens ? ` • ${numTokens} tokens` : ""}
+                {messages.map((message) => (
+                  <MessageBubble key={message.id} message={message} />
+                ))}
+              </div>
+
+              <div className="composer">
+                <textarea
+                  rows={1}
+                  value={input}
+                  onChange={(event) => setInput(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter" && !event.shiftKey) {
+                      event.preventDefault();
+                      sendMessage();
+                    }
+                  }}
+                  placeholder="Ask Stratos AI anything..."
+                />
+
+                <div className="composer-actions">
+                  <button className="icon-button" onClick={runConnectivityCheck}>
+                    Test connectivity
+                  </button>
+                  <button className="icon-button" onClick={toggleRecording}>
+                    {recording ? "Stop Mic" : "Mic"}
+                  </button>
+                  <button className="icon-button" onClick={triggerScan}>
+                    Scan
+                  </button>
+                  <button
+                    className={`icon-button ${enableThinking ? "active" : ""}`}
+                    onClick={() => setEnableThinking((value) => !value)}
+                  >
+                    Think
+                  </button>
+                  {isRunning ? (
+                    <button className="primary-button danger" onClick={() => workerRef.current?.postMessage({ type: "interrupt" })}>
+                      Stop
+                    </button>
+                  ) : (
+                    <button className="primary-button compact" onClick={() => sendMessage()}>
+                      Send
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              <div className="footer-row">
+                <div>{loadingMessage || mediaError}</div>
+                <div>
+                  {tps ? `${tps.toFixed(2)} tokens/s` : ""}
+                  {numTokens ? ` • ${numTokens} tokens` : ""}
+                </div>
               </div>
             </div>
-          </div>
+          )}
         </div>
       )}
     </>
