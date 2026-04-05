@@ -48,8 +48,9 @@ Pick the one that matches how you need the data and compute to flow.
 
 ### 1. Secured domain services (Cloudflare Worker + R2)
 
-A public HTTPS deployment with zero foreign runtime dependencies at inference
-time. Everything the app loads comes from accounts you control:
+A public HTTPS deployment with zero external runtime dependencies **during
+deployment** — every request the running app makes resolves to accounts you
+control. Everything the app loads comes from infrastructure you own:
 
 - **App shell** — built by Vite, deployed as static assets to a Cloudflare
   Worker (`wrangler.jsonc`, `vision.stratoslab.xyz`).
