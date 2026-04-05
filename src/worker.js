@@ -179,60 +179,23 @@ class ModelSession {
 
 const session = new ModelSession();
 
-function formatMessages(messages) {
-  const lastUserIndex = [...messages]
-    .reverse()
-    .findIndex((message) => message.role === "user");
-  const absoluteLastUserIndex =
-    lastUserIndex === -1 ? -1 : messages.length - 1 - lastUserIndex;
-
-  return messages.map((message, index) => {
-    if (message.role === "assistant") {
-      return { role: "assistant", content: message.content };
-    }
-
-    const isLatestUser = index === absoluteLastUserIndex;
-    const parts = [];
-
-    if (isLatestUser && message.image) {
-      parts.push({ type: "image" });
-    }
-    if (isLatestUser && message.audio) {
-      parts.push({ type: "audio" });
-    }
-
-    if (message.content?.trim()) {
-      parts.push({ type: "text", text: message.content.trim() });
-    } else if (parts.length === 0) {
-      parts.push({ type: "text", text: "Describe what you see." });
-    }
-
-    if (!isLatestUser && message.image) {
-      parts.push({ type: "text", text: "[Image shared earlier in the conversation]" });
-    }
-    if (!isLatestUser && message.audio) {
-      parts.push({ type: "text", text: "[Audio shared earlier in the conversation]" });
-    }
-
-    return { role: "user", content: parts };
-  });
-}
-
 async function prepareInputs(messages, enableThinking) {
-  const promptMessages = formatMessages(messages);
-  const prompt = session.processor.apply_chat_template(promptMessages, {
+  const lastMessage = messages.at(-1);
+  const prompt = session.processor.apply_chat_template([lastMessage], {
     add_generation_prompt: true,
     enable_thinking: enableThinking,
   });
 
-  const latestUser = [...messages].reverse().find((message) => message.role === "user");
+  const contentParts = Array.isArray(lastMessage?.content) ? lastMessage.content : [];
+  const imagePart = contentParts.find((part) => part.type === "image");
+  const audioPart = contentParts.find((part) => part.type === "audio");
 
-  const image = latestUser?.image ? await load_image(latestUser.image) : null;
+  const image = imagePart?.image ? await load_image(imagePart.image) : null;
   const audio =
-    typeof latestUser?.audio === "string"
-      ? await read_audio(latestUser.audio, 16000)
-      : latestUser?.audio
-        ? new Float32Array(latestUser.audio)
+    typeof audioPart?.audio === "string"
+      ? await read_audio(audioPart.audio, 16000)
+      : audioPart?.audio
+        ? new Float32Array(audioPart.audio)
         : null;
 
   return session.processor(prompt, image, audio, {
@@ -252,7 +215,7 @@ async function generate(messages, enableThinking) {
 
   const streamer = new TextStreamer(session.processor.tokenizer, {
     skip_prompt: true,
-    skip_special_tokens: false,
+    skip_special_tokens: true,
     callback_function: (text) => {
       outputText += text;
       self.postMessage({

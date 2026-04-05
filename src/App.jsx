@@ -1,45 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 
 const EXAMPLES = [
-  "Summarize what Stratos is building on Canton.",
-  "What risk checks would matter for an enterprise DeFi workflow?",
-  "Describe what you see and suggest a next operational step.",
+  "Describe what you see in the current frame.",
+  "Identify the main objects, people, and actions in this scene.",
+  "Summarize the visual scene clearly and concisely.",
 ];
 
-function PreflightTools({
-  loadingMessage,
-  errorMessage,
-  diagnostics,
-  connectivityResults,
-  onConnectivityCheck,
-  compact = false,
-}) {
-  return (
-    <div className={`preflight-tools ${compact ? "compact" : ""}`}>
-      <div className="preflight-actions">
-        <button className="icon-button preflight-button" onClick={onConnectivityCheck}>
-          Test connectivity
-        </button>
-      </div>
-      <DiagnosticsPanel
-        loadingMessage={loadingMessage}
-        errorMessage={errorMessage}
-        diagnostics={diagnostics}
-      />
-      <ConnectivityResults results={connectivityResults} />
-    </div>
-  );
-}
-
-function Landing({
-  onStart,
-  onConnectivityCheck,
-  supported,
-  loadingMessage,
-  errorMessage,
-  diagnostics,
-  connectivityResults,
-}) {
+function Landing({ onStart, supported }) {
   return (
     <div className="screen landing">
       <div className="landing-bg" />
@@ -58,26 +25,12 @@ function Landing({
         <p className="meta-line">
           Uses Transformers.js and ONNX Runtime Web. No prompts or media leave this device.
         </p>
-        <PreflightTools
-          loadingMessage={loadingMessage}
-          errorMessage={errorMessage}
-          diagnostics={diagnostics}
-          connectivityResults={connectivityResults}
-          onConnectivityCheck={onConnectivityCheck}
-        />
       </div>
     </div>
   );
 }
 
-function LoadingScreen({
-  progress,
-  loadingMessage,
-  errorMessage,
-  diagnostics,
-  connectivityResults,
-  onConnectivityCheck,
-}) {
+function LoadingScreen({ progress }) {
   const rounded = Math.round(progress);
   return (
     <div className="screen loading-screen">
@@ -88,71 +41,15 @@ function LoadingScreen({
       </div>
       <p className="progress-value">{rounded}%</p>
       <p className="meta-line">Gemma 4 loads locally and is cached after first run.</p>
-      <PreflightTools
-        compact
-        loadingMessage={loadingMessage}
-        errorMessage={errorMessage}
-        diagnostics={diagnostics}
-        connectivityResults={connectivityResults}
-        onConnectivityCheck={onConnectivityCheck}
-      />
-    </div>
-  );
-}
-
-function DiagnosticsPanel({ loadingMessage, errorMessage, diagnostics }) {
-  const extensionHint =
-    /ERR_BLOCKED_BY_CLIENT|blocked by client|SES|lockdown-install/i.test(
-      `${errorMessage} ${loadingMessage} ${diagnostics.join(" ")}`,
-    )
-      ? "A browser extension may be blocking requests. Test in an incognito window or with extensions disabled."
-      : null;
-
-  if (!loadingMessage && !errorMessage && diagnostics.length === 0) {
-    return null;
-  }
-
-  return (
-    <div className={`diagnostics ${errorMessage ? "error" : ""}`}>
-      <div className="diagnostics-title">
-        {errorMessage ? "Runtime issue detected" : "Model loading diagnostics"}
-      </div>
-      {loadingMessage ? <div className="diagnostics-line">{loadingMessage}</div> : null}
-      {errorMessage ? <div className="diagnostics-line strong">{errorMessage}</div> : null}
-      {diagnostics.slice(-12).map((line) => (
-        <div key={line} className="diagnostics-line">
-          {line}
-        </div>
-      ))}
-      {extensionHint ? <div className="diagnostics-hint">{extensionHint}</div> : null}
-    </div>
-  );
-}
-
-function ConnectivityResults({ results }) {
-  if (!results.length) {
-    return null;
-  }
-
-  return (
-    <div className="diagnostics">
-      <div className="diagnostics-title">Connectivity check</div>
-      {results.map((result) => (
-        <div key={result.url} className="diagnostics-line">
-          {result.ok ? "OK" : "FAIL"} {result.status} {result.label ? `${result.label} • ` : ""}
-          {result.method ? `${result.method} • ` : ""}
-          {result.url}
-          {result.contentLength ? ` • bytes=${result.contentLength}` : ""}
-          {result.contentRange && result.contentRange !== "none" ? ` • range=${result.contentRange}` : ""}
-          {result.contentType ? ` • type=${result.contentType}` : ""}
-          {result.error ? ` — ${result.error}` : ""}
-        </div>
-      ))}
     </div>
   );
 }
 
 function MessageBubble({ message }) {
+  const textContent = Array.isArray(message.content)
+    ? message.content.find((part) => part.type === "text")?.text ?? ""
+    : message.content;
+
   return (
     <div className={`bubble-row ${message.role === "user" ? "user" : "assistant"}`}>
       <div className={`bubble ${message.role}`}>
@@ -161,7 +58,7 @@ function MessageBubble({ message }) {
         )}
         {message.audio && <div className="audio-chip">Audio attached</div>}
         {message.thinking && <pre className="thinking-box">{message.thinking}</pre>}
-        <div className="bubble-text">{message.content || (message.isStreaming ? "…" : "")}</div>
+        <div className="bubble-text">{textContent || (message.isStreaming ? "…" : "")}</div>
       </div>
     </div>
   );
@@ -202,8 +99,6 @@ function App() {
   const [mediaError, setMediaError] = useState("");
   const [scanFrame, setScanFrame] = useState(null);
   const [recording, setRecording] = useState(false);
-  const [diagnostics, setDiagnostics] = useState([]);
-  const [connectivityResults, setConnectivityResults] = useState([]);
 
   const mediaStreamRef = useRef(null);
   const videoObjectUrlRef = useRef(null);
@@ -216,13 +111,6 @@ function App() {
   }, [messages]);
 
   const starterExamples = useMemo(() => EXAMPLES, []);
-
-  const appendDiagnostic = (message) => {
-    const timestamp = new Date().toLocaleTimeString("en-US", {
-      hour12: false,
-    });
-    setDiagnostics((current) => [...current.slice(-23), `[${timestamp}] ${message}`]);
-  };
 
   useEffect(() => {
     const worker = workerRef.current;
@@ -243,17 +131,9 @@ function App() {
         case "progress":
           setProgress(event.data.progress ?? 0);
           break;
-        case "debug":
-          appendDiagnostic(event.data.data?.message ?? "Worker update received.");
-          break;
         case "ready":
           setPhase("app");
           setLoadingMessage("Model ready.");
-          appendDiagnostic("Model ready.");
-          break;
-        case "connectivity-result":
-          setConnectivityResults(event.data.data ?? []);
-          appendDiagnostic("Connectivity check completed.");
           break;
         case "start":
           setIsRunning(true);
@@ -295,7 +175,6 @@ function App() {
         case "error":
           setMediaError(data);
           setIsRunning(false);
-          appendDiagnostic(`Error: ${data}`);
           break;
         default:
           break;
@@ -325,12 +204,6 @@ function App() {
     workerRef.current?.postMessage({ type: "load" });
   };
 
-  const runConnectivityCheck = () => {
-    setConnectivityResults([]);
-    appendDiagnostic("Running connectivity check...");
-    workerRef.current?.postMessage({ type: "connectivity-check" });
-  };
-
   const captureFrame = () => {
     const video = videoRef.current;
     const canvas = canvasRef.current;
@@ -355,6 +228,18 @@ function App() {
       return;
     }
 
+    const modelContent = [];
+    if (image) {
+      modelContent.push({ type: "image", image });
+    }
+    if (audio) {
+      modelContent.push({ type: "audio", audio });
+    }
+    modelContent.push({
+      type: "text",
+      text: content || "Describe what you see.",
+    });
+
     const nextMessage = {
       id: crypto.randomUUID(),
       role: "user",
@@ -367,10 +252,34 @@ function App() {
     setMessages((current) => [...current, nextMessage]);
     setInput("");
     const nextMessages = [...messagesRef.current, nextMessage];
+    const modelMessages = nextMessages.map((message) =>
+      message.role === "assistant"
+        ? {
+            role: "assistant",
+            content: [{ type: "text", text: message.content }],
+          }
+        : {
+            role: "user",
+            content:
+              message === nextMessage
+                ? modelContent
+                : [
+                    ...(message.image ? [{ type: "image", image: message.image }] : []),
+                    ...(message.audio ? [{ type: "audio", audio: message.audio }] : []),
+                    {
+                      type: "text",
+                      text:
+                        typeof message.content === "string" && message.content.trim()
+                          ? message.content
+                          : "Describe what you see.",
+                    },
+                  ],
+          },
+    );
     workerRef.current?.postMessage({
       type: "generate",
       data: {
-        messages: nextMessages,
+        messages: modelMessages,
         enableThinking,
       },
     });
@@ -454,19 +363,12 @@ function App() {
         setRecording(false);
         stream.getTracks().forEach((track) => track.stop());
         const blob = new Blob(recordedChunksRef.current, { type: "audio/webm" });
-        const arrayBuffer = await blob.arrayBuffer();
-        const audioContext = new AudioContext({ sampleRate: 16000 });
-        try {
-          const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
-          const channelData = Array.from(audioBuffer.getChannelData(0));
-          await sendMessage({
-            text: input.trim() || "Transcribe this audio and respond to what I said.",
-            audio: channelData,
-            hideText: !input.trim(),
-          });
-        } finally {
-          await audioContext.close();
-        }
+        const audioUrl = URL.createObjectURL(blob);
+        await sendMessage({
+          text: input.trim() || "Transcribe this audio and respond to what I said.",
+          audio: audioUrl,
+          hideText: !input.trim(),
+        });
       };
       recorder.start();
       setRecording(true);
@@ -478,26 +380,9 @@ function App() {
   return (
     <>
       {phase === "landing" && (
-        <Landing
-          onStart={requestLoad}
-          onConnectivityCheck={runConnectivityCheck}
-          supported={supported}
-          loadingMessage={loadingMessage}
-          errorMessage={mediaError}
-          diagnostics={diagnostics}
-          connectivityResults={connectivityResults}
-        />
+        <Landing onStart={requestLoad} supported={supported} />
       )}
-      {phase === "loading" && (
-        <LoadingScreen
-          progress={progress}
-          loadingMessage={loadingMessage}
-          errorMessage={mediaError}
-          diagnostics={diagnostics}
-          connectivityResults={connectivityResults}
-          onConnectivityCheck={runConnectivityCheck}
-        />
-      )}
+      {phase === "loading" && <LoadingScreen progress={progress} />}
       {phase === "app" && (
         <div className="screen app-shell">
           <video
@@ -555,12 +440,6 @@ function App() {
 
           {videoSource && (
             <div className="chat-shell">
-              <DiagnosticsPanel
-                loadingMessage={loadingMessage}
-                errorMessage={mediaError}
-                diagnostics={diagnostics}
-              />
-              <ConnectivityResults results={connectivityResults} />
               <div className="chat-log" ref={chatScrollRef}>
                 {messages.length === 0 && (
                   <div className="example-list">
@@ -596,9 +475,6 @@ function App() {
                 />
 
                 <div className="composer-actions">
-                  <button className="icon-button" onClick={runConnectivityCheck}>
-                    Test connectivity
-                  </button>
                   <button className="icon-button" onClick={toggleRecording}>
                     {recording ? "Stop Mic" : "Mic"}
                   </button>
