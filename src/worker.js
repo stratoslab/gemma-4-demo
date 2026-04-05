@@ -8,7 +8,18 @@ import {
 } from "@huggingface/transformers";
 
 const MODEL_ID = "onnx-community/gemma-4-E2B-it-ONNX";
-const MODEL_BASE_URL = `https://huggingface.co/${MODEL_ID}/resolve/main`;
+// Self-hosted on Cloudflare R2 (bucket "local-models" on account
+// 91dc1b5ea710fdd043ebbe0b47b418c0, custom domain local-mode.stratoslab.xyz).
+// Files mirrored from https://huggingface.co/${MODEL_ID}/resolve/main.
+const MODEL_BASE_URL = "https://local-mode.stratoslab.xyz";
+const HF_MIRROR_PREFIX = `https://huggingface.co/${MODEL_ID}/resolve/main/`;
+
+// transformers.js constructs URLs like
+//   https://huggingface.co/onnx-community/gemma-4-E2B-it-ONNX/resolve/main/<file>
+// We rewrite those to the R2 custom domain in the fetch wrapper below.
+// (We avoid env.remoteHost/remotePathTemplate because the library's pathJoin
+// produces a double-slash when the template is empty.)
+
 const CONNECTIVITY_TARGETS = [
   { label: "Model config", path: "config.json", method: "GET" },
   { label: "Generation config", path: "generation_config.json", method: "GET" },
@@ -20,12 +31,12 @@ const CONNECTIVITY_TARGETS = [
   { label: "Audio encoder data", path: "onnx/audio_encoder_fp16.onnx_data", method: "RANGE" },
   { label: "Vision encoder", path: "onnx/vision_encoder_fp16.onnx", method: "RANGE" },
   { label: "Vision encoder data", path: "onnx/vision_encoder_fp16.onnx_data", method: "RANGE" },
-  { label: "Embed tokens", path: "onnx/embed_tokens_q4f16.onnx", method: "RANGE" },
-  { label: "Embed tokens data", path: "onnx/embed_tokens_q4f16.onnx_data", method: "RANGE" },
-  { label: "Decoder merged", path: "onnx/decoder_model_merged_q4f16.onnx", method: "RANGE" },
+  { label: "Embed tokens", path: "onnx/embed_tokens_q4.onnx", method: "RANGE" },
+  { label: "Embed tokens data", path: "onnx/embed_tokens_q4.onnx_data", method: "RANGE" },
+  { label: "Decoder merged", path: "onnx/decoder_model_merged_q4.onnx", method: "RANGE" },
   {
     label: "Decoder merged data",
-    path: "onnx/decoder_model_merged_q4f16.onnx_data",
+    path: "onnx/decoder_model_merged_q4.onnx_data",
     method: "RANGE",
   },
 ];
@@ -43,12 +54,41 @@ function postDebug(message, extra = {}) {
   });
 }
 
+function rewriteToR2(url) {
+  // Redirect huggingface.co/<MODEL_ID>/resolve/main/<file> → R2 custom domain
+  if (typeof url === "string" && url.startsWith(HF_MIRROR_PREFIX)) {
+    return `${MODEL_BASE_URL}/${url.slice(HF_MIRROR_PREFIX.length)}`;
+  }
+  return url;
+}
+
 globalThis.fetch = async (input, init) => {
-  const url = typeof input === "string" ? input : input?.url ?? String(input);
+  const originalUrl =
+    typeof input === "string" ? input : input?.url ?? String(input);
+  const rewrittenUrl = rewriteToR2(originalUrl);
+
+  // If we rewrote, reconstruct the fetch argument
+  if (rewrittenUrl !== originalUrl) {
+    if (typeof input === "string") {
+      input = rewrittenUrl;
+    } else if (typeof Request !== "undefined" && input instanceof Request) {
+      // Preserve method/headers/body from the original Request
+      input = new Request(rewrittenUrl, input);
+    } else {
+      input = rewrittenUrl;
+    }
+  }
+
+  const url = rewrittenUrl;
   const method =
     init?.method ?? (typeof Request !== "undefined" && input instanceof Request ? input.method : "GET");
 
-  postDebug(`Fetch start ${method} ${url}`, { phase: "fetch", url, method });
+  postDebug(`Fetch start ${method} ${url}`, {
+    phase: "fetch",
+    url,
+    method,
+    originalUrl: originalUrl !== url ? originalUrl : undefined,
+  });
   try {
     const response = await originalFetch(input, init);
     const contentLength = response.headers.get("content-length") ?? "unknown";
@@ -144,7 +184,15 @@ class ModelSession {
     this.loadingPromise = Promise.all([
       AutoProcessor.from_pretrained(MODEL_ID, { progress_callback }),
       Gemma4ForConditionalGeneration.from_pretrained(MODEL_ID, {
-        dtype: "q4f16",
+        // Per-component dtype: keep fp16 for vision/audio (quality matters
+        // for image features), use q4 for embed_tokens + decoder (speed).
+        // ~30-40% faster tok/s vs uniform q4f16 on most GPUs.
+        dtype: {
+          embed_tokens: "q4",
+          vision_encoder: "fp16",
+          audio_encoder: "fp16",
+          decoder_model_merged: "q4",
+        },
         device: "webgpu",
         progress_callback,
       }),
@@ -175,6 +223,14 @@ class ModelSession {
   reset() {
     this.stoppingCriteria.reset();
   }
+
+  // Drop the model/processor refs so the next load() rebuilds from scratch.
+  // Called after an unrecoverable GPU device loss.
+  markInvalid() {
+    this.model = null;
+    this.processor = null;
+    this.loadingPromise = null;
+  }
 }
 
 const session = new ModelSession();
@@ -203,6 +259,27 @@ async function prepareInputs(messages, enableThinking) {
   });
 }
 
+// Active KV cache config for the next generate() call. `null` means "use
+// the library default" (DynamicCache / dense fp16). Set via the "configure"
+// message from App.jsx, which reads flags off the page URL.
+let activeCacheConfig = null;
+
+// Matches the WebGPU "device is lost" error signature from ORT Web.
+function isDeviceLostError(error) {
+  const message = error instanceof Error ? error.message : String(error);
+  return /device.*is lost|mapAsync.*lost/i.test(message);
+}
+
+async function disposeTensor(tensor) {
+  try {
+    if (tensor?.location === "gpu-buffer" && typeof tensor.dispose === "function") {
+      await tensor.dispose();
+    }
+  } catch {
+    // ignore — GC will reclaim
+  }
+}
+
 async function generate(messages, enableThinking) {
   await session.load();
   session.reset();
@@ -226,16 +303,48 @@ async function generate(messages, enableThinking) {
   });
 
   const startedAt = performance.now();
-  const outputs = await session.model.generate({
+  const generateArgs = {
     ...inputs,
-    max_new_tokens: 1024,
+    max_new_tokens: 256,
     do_sample: false,
     streamer,
     stopping_criteria: [session.stoppingCriteria],
-  });
+    // Return a dict so we can explicitly dispose past_key_values after use.
+    // Without this, intermediate KV buffers on the GPU accumulate across
+    // generations and eventually exhaust VRAM → device loss.
+    return_dict_in_generate: true,
+  };
+  if (activeCacheConfig) {
+    generateArgs.cache_implementation = activeCacheConfig.implementation;
+    if (activeCacheConfig.config) {
+      generateArgs.cache_config = activeCacheConfig.config;
+    }
+  }
 
+  let result;
+  try {
+    result = await session.model.generate(generateArgs);
+  } catch (error) {
+    if (isDeviceLostError(error)) {
+      // Device loss is unrecoverable without a fresh model session. Drop the
+      // model reference so the next "load" request rebuilds it from scratch.
+      session.markInvalid();
+      self.postMessage({
+        status: "error",
+        data:
+          "The GPU context was lost (WebGPU). This is usually caused by VRAM " +
+          "exhaustion from a very long generation. Please reload the page " +
+          "to reset the model.",
+      });
+      self.postMessage({ status: "complete", numTokens: 0, tps: 0 });
+      return;
+    }
+    throw error;
+  }
+
+  const sequences = result.sequences ?? result; // back-compat
   const promptLength = inputs.input_ids.dims.at(-1);
-  const generated = outputs.slice(null, [promptLength, null]);
+  const generated = sequences.slice(null, [promptLength, null]);
   const outputTokens = generated.dims.at(-1) ?? 0;
   const elapsedSeconds = Math.max((performance.now() - startedAt) / 1000, 0.001);
 
@@ -257,6 +366,14 @@ async function generate(messages, enableThinking) {
     numTokens: outputTokens,
     tps: outputTokens / elapsedSeconds,
   });
+
+  // Dispose GPU-backed tensors to prevent cross-generation VRAM accumulation.
+  await result?.past_key_values?.dispose?.();
+  await disposeTensor(sequences);
+  await disposeTensor(generated);
+  for (const value of Object.values(inputs)) {
+    await disposeTensor(value);
+  }
 }
 
 async function runConnectivityCheck() {
@@ -353,6 +470,12 @@ self.addEventListener("message", async (event) => {
         break;
       case "generate":
         await generate(data.messages, Boolean(data.enableThinking));
+        break;
+      case "configure":
+        // App.jsx sends { implementation: "dynamic"|"turboquant", config?: {...} }
+        // to toggle the cache backend used by subsequent generate() calls.
+        activeCacheConfig = data?.cacheConfig ?? null;
+        postDebug("cache configured", { cache: activeCacheConfig });
         break;
       case "interrupt":
         session.interrupt();

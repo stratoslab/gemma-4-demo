@@ -1,0 +1,38 @@
+# go2rtc configuration — RTSP gateway for Stratos Vision
+#
+# Streams are pulled from RTSP cameras and republished as HLS, WebRTC, etc.
+# The app at https://vision.stratoslab.xyz fetches HLS at:
+#   http://localhost:1984/api/stream.m3u8?src=<name>
+
+# --- Streams ---
+# Add one entry per camera.
+streams:
+  # #media=video skips the audio track — works around a broken Content-Base
+  # header this camera sends (ANJVISION firmware, LIVE555 server).
+  cam1: rtsp://admin:123456@192.168.0.148:554/mpeg4/ch1/main/av_stream#media=video
+  # Add more cameras here:
+  # cam2: rtsp://admin:password@192.168.0.149:554/...
+  # Synthetic test pattern (no camera needed, works offline):
+  # test: ffmpeg:testsrc2=size=1280x720:rate=15
+
+# --- HTTP API + HLS ---
+api:
+  listen: :1984
+  # CORS: allow the deployed app (https) + local dev. go2rtc echoes the
+  # request Origin if it matches; "*" wildcards also work.
+  origin: "*"
+
+# --- HLS playback ---
+hls:
+  # go2rtc serves HLS at /api/stream.m3u8?src=<stream_name>
+  # No extra config needed — HLS is enabled by default when api is on.
+
+# --- WebRTC (optional, lower latency) ---
+webrtc:
+  listen: :8555/tcp
+  candidates:
+    - stun:8555
+
+# --- Logging ---
+log:
+  level: info

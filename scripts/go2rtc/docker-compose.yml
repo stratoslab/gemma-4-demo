@@ -1,0 +1,16 @@
+# Run go2rtc as an RTSP→HLS/WebRTC gateway on the same machine as your browser.
+# Usage:  docker compose up -d
+#         docker compose logs -f
+
+services:
+  go2rtc:
+    image: alexxit/go2rtc:latest
+    container_name: go2rtc
+    restart: unless-stopped
+    network_mode: host        # needed for WebRTC + mDNS camera discovery
+    volumes:
+      - ./go2rtc.yaml:/config/go2rtc.yaml:ro
+    # Ports (bound via host network):
+    #   1984  HTTP API + HLS + WebUI at http://localhost:1984
+    #   8554  RTSP republish
+    #   8555  WebRTC

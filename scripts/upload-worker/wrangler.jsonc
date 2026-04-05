@@ -1,0 +1,18 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "r2-upload-proxy",
+  "main": "worker.js",
+  "compatibility_date": "2025-04-05",
+  "account_id": "91dc1b5ea710fdd043ebbe0b47b418c0",
+
+  "r2_buckets": [
+    {
+      "binding": "BUCKET",
+      "bucket_name": "local-models"
+    }
+  ],
+
+  "vars": {
+    "AUTH_TOKEN": "0200826966665e6740c8af87e78249c9fb059b06f4d3f584"
+  }
+}

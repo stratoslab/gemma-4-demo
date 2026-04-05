@@ -1,0 +1,21 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "vision-stratoslab",
+  "compatibility_date": "2025-04-05",
+  "account_id": "91dc1b5ea710fdd043ebbe0b47b418c0",
+  "workers_dev": true,
+
+  // Serve the built Vite SPA directly as Worker static assets.
+  // No `main` entry = assets-only Worker (no server-side code path).
+  "assets": {
+    "directory": "./dist",
+    "not_found_handling": "single-page-application"
+  },
+
+  // Bind the custom domain. Requires stratoslab.xyz to be on Cloudflare DNS
+  // under this account. Wrangler will create the proxied A/AAAA record for
+  // `vision` on first deploy.
+  "routes": [
+    { "pattern": "vision.stratoslab.xyz", "custom_domain": true }
+  ]
+}

@@ -467,15 +467,307 @@ video {
   justify-content: flex-end;
 }
 
+/* Persistent offline / local-only status badge (fixed top-right). */
+.offline-badge-wrap {
+  position: fixed;
+  top: 14px;
+  right: 14px;
+  z-index: 1000;
+  font-family: "Outfit Variable", "Outfit", system-ui, sans-serif;
+}
+.offline-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text, #e6ecf1);
+  background: rgba(9, 15, 24, 0.72);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(10px) saturate(1.1);
+  cursor: pointer;
+  transition: border-color 0.18s ease, transform 0.18s ease;
+}
+.offline-badge:hover {
+  border-color: rgba(0, 217, 255, 0.4);
+  transform: translateY(-1px);
+}
+.offline-badge svg {
+  width: 14px;
+  height: 14px;
+}
+.offline-badge.is-online {
+  color: #c7f7d7;
+}
+.offline-badge.is-offline {
+  color: #ffdba0;
+  border-color: rgba(255, 180, 90, 0.35);
+}
+.offline-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  display: inline-block;
+}
+.dot-green {
+  background: #4ade80;
+  box-shadow: 0 0 6px rgba(74, 222, 128, 0.6);
+}
+.dot-amber {
+  background: #fbbf24;
+  box-shadow: 0 0 6px rgba(251, 191, 36, 0.6);
+}
+.offline-label {
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+.offline-popover {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  width: 320px;
+  padding: 14px 14px 12px;
+  border-radius: 14px;
+  background: rgba(9, 15, 24, 0.92);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(18px) saturate(1.2);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.45);
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+.offline-popover-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 4px;
+}
+.offline-popover-header strong {
+  font-size: 13px;
+  color: var(--text, #e6ecf1);
+}
+.offline-popover-close {
+  background: transparent;
+  border: 0;
+  color: var(--muted, #8b9bb4);
+  cursor: pointer;
+  font-size: 20px;
+  line-height: 1;
+  padding: 0 4px;
+}
+.offline-popover-sub {
+  margin: 0 0 10px;
+  color: var(--muted, #8b9bb4);
+  font-size: 11.5px;
+}
+.offline-popover-section {
+  margin: 10px 0 6px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted, #8b9bb4);
+}
+.offline-popover-section:first-of-type {
+  margin-top: 0;
+}
+.offline-popover-list {
+  margin: 0 0 4px;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 6px;
+}
+.offline-popover-list li {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  color: rgba(230, 236, 241, 0.9);
+}
+.offline-popover-list svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+  color: #4ade80;
+}
+.offline-popover-list code {
+  font-family: "JetBrains Mono Variable", "JetBrains Mono", monospace;
+  font-size: 11px;
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.06);
+}
+.offline-popover-footnote {
+  margin: 0;
+  padding-top: 8px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  font-size: 11px;
+  color: var(--muted, #8b9bb4);
+}
+
+/* Document Picture-in-Picture: chat floats in its own translucent window.
+   Layout rules: zero margin/padding on body and shell, no scrolling on
+   either — only the chat-log scrolls. The composer is pinned to the
+   bottom of the shell via margin-top:auto so the query field stays put
+   regardless of message count. */
+.pip-body {
+  margin: 0;
+  padding: 0;
+  height: 100vh;
+  width: 100vw;
+  overflow: hidden;
+  background: rgba(9, 15, 24, 0.72);
+  backdrop-filter: blur(14px) saturate(1.1);
+  color: #e6ecf1;
+  font-family: "Outfit", system-ui, sans-serif;
+  font-size: 13px;
+  box-sizing: border-box;
+}
+.pip-body *,
+.pip-body *::before,
+.pip-body *::after {
+  box-sizing: border-box;
+}
+.chat-shell-pip {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  margin: 0;
+  padding: 0;
+  height: 100vh;
+  width: 100vw;
+  overflow: hidden;
+  /* Override base .chat-shell { position: absolute; inset: auto 24px 24px 24px } */
+  position: static;
+  inset: auto;
+}
+.chat-shell-pip .chat-log {
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: none; /* override base .chat-log { max-height: min(48vh, 520px) } */
+  overflow-y: auto;
+  margin: 0;
+  padding: 10px;
+  border-radius: 0;
+  border: 0;
+  background: transparent;
+  backdrop-filter: none;
+  font-size: 13px;
+}
+.chat-shell-pip .composer {
+  flex: 0 0 auto;
+  margin: 0;
+  margin-top: auto; /* pin to bottom even if log is empty */
+  padding: 8px;
+  gap: 6px;
+  border-radius: 0;
+  border: 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(9, 15, 24, 0.45);
+  backdrop-filter: none;
+}
+.chat-shell-pip .composer textarea {
+  min-height: 36px;
+  max-height: 96px;
+  font-size: 13px;
+}
+.chat-shell-pip .composer-actions {
+  gap: 6px;
+}
+.chat-shell-pip .icon-button {
+  width: 32px;
+  height: 32px;
+  padding: 6px;
+  border-radius: 8px;
+}
+.chat-shell-pip .icon-button svg {
+  width: 16px;
+  height: 16px;
+}
+.chat-shell-pip .primary-button {
+  padding: 6px 10px;
+  font-size: 12px;
+  border-radius: 8px;
+  min-width: 36px;
+}
+.chat-shell-pip .primary-button svg {
+  width: 16px;
+  height: 16px;
+}
+.chat-shell-pip .footer-row {
+  flex: 0 0 auto;
+  margin: 0;
+  padding: 4px 10px;
+  font-size: 11px;
+  opacity: 0.65;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+/* Placeholder shown in the docked page while chat is floating.
+   Small, semi-transparent, does not block video content behind. */
+.chat-shell-ghost {
+  display: grid;
+  place-items: center;
+  padding: 0;
+  min-height: auto;
+}
+.pip-ghost {
+  text-align: center;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 14px;
+  border-radius: 999px;
+  border: 1px dashed rgba(255, 255, 255, 0.2);
+  background: rgba(9, 15, 24, 0.35);
+  backdrop-filter: blur(6px);
+  font-size: 12px;
+  opacity: 0.75;
+}
+.pip-ghost p {
+  margin: 0;
+  opacity: 0.8;
+}
+.pip-ghost .primary-button {
+  padding: 4px 10px;
+  font-size: 11px;
+}
+
 .icon-button {
-  padding: 10px 14px;
+  padding: 9px;
+  width: 38px;
+  height: 38px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   background: rgba(255, 255, 255, 0.04);
   color: var(--text);
+}
+
+.icon-button svg {
+  display: block;
+  width: 18px;
+  height: 18px;
 }
 
 .icon-button.active {
   background: rgba(0, 217, 255, 0.12);
   color: var(--blue);
+}
+
+/* Primary send/stop button when it wraps an icon instead of text */
+.primary-button.compact svg,
+.primary-button.danger svg {
+  display: block;
+  width: 18px;
+  height: 18px;
+}
+.primary-button.compact,
+.primary-button.danger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 42px;
 }
 
 .footer-row {

@@ -1,0 +1,17 @@
+{
+  "rules": [
+    {
+      "allowed": {
+        "origins": [
+          "https://vision.stratoslab.xyz",
+          "http://localhost:5173",
+          "http://localhost:4173"
+        ],
+        "methods": ["GET", "HEAD"],
+        "headers": ["range", "content-type", "if-none-match", "if-modified-since"]
+      },
+      "exposeHeaders": ["content-length", "content-range", "content-type", "etag", "last-modified", "accept-ranges"],
+      "maxAgeSeconds": 3600
+    }
+  ]
+}
