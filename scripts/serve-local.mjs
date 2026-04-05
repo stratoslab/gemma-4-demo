@@ -10,8 +10,9 @@
 // so no TLS setup is required. For LAN access from another device, use mkcert
 // or a reverse proxy — browsers reject WebGPU over plain HTTP on non-localhost.
 
-import { createServer } from "node:http";
-import { createReadStream, statSync } from "node:fs";
+import { createServer as createHttpServer } from "node:http";
+import { createServer as createHttpsServer } from "node:https";
+import { createReadStream, readFileSync, statSync } from "node:fs";
 import { extname, join, normalize, resolve } from "node:path";
 import { parseArgs } from "node:util";
 
@@ -20,12 +21,30 @@ const { values } = parseArgs({
     port: { type: "string", short: "p", default: "8787" },
     dir: { type: "string", short: "d", default: "dist" },
     host: { type: "string", default: "127.0.0.1" },
+    // Optional: serve a second directory at /models/* so the app can
+    // run fully air-gapped. Point worker.js's env.remoteHost at
+    // http(s)://<host>:<port>/models when this is set.
+    models: { type: "string", short: "m", default: "" },
+    // Paths to a TLS cert + key (PEM). When both are provided, the
+    // server runs over HTTPS. Required for LAN access because browsers
+    // block WebGPU + service workers on non-localhost HTTP origins.
+    cert: { type: "string", default: "" },
+    key: { type: "string", default: "" },
   },
 });
 
 const ROOT = resolve(process.cwd(), values.dir);
+const MODELS_ROOT = values.models ? resolve(process.cwd(), values.models) : null;
 const PORT = Number(values.port);
 const HOST = values.host;
+const USE_TLS = Boolean(values.cert && values.key);
+const TLS_OPTIONS = USE_TLS
+  ? {
+      cert: readFileSync(resolve(process.cwd(), values.cert)),
+      key: readFileSync(resolve(process.cwd(), values.key)),
+    }
+  : null;
+const PROTOCOL = USE_TLS ? "https" : "http";
 
 try {
   statSync(ROOT).isDirectory();
@@ -33,6 +52,14 @@ try {
   console.error(`Build dir not found: ${ROOT}`);
   console.error(`Run "npm run build" first, or pass --dir <path>.`);
   process.exit(1);
+}
+if (MODELS_ROOT) {
+  try {
+    statSync(MODELS_ROOT).isDirectory();
+  } catch {
+    console.error(`Models dir not found: ${MODELS_ROOT}`);
+    process.exit(1);
+  }
 }
 
 // Map file extensions to the MIME types browsers actually demand. Critical
@@ -79,8 +106,15 @@ function send(res, status, body, extraHeaders = {}) {
 
 function resolveSafePath(urlPath) {
   // Strip query string + hash, decode, normalize. Reject any path that
-  // escapes the build dir.
+  // escapes its allowed root. /models/* resolves under MODELS_ROOT,
+  // everything else under ROOT (the built app shell).
   const clean = decodeURIComponent(urlPath.split("?")[0].split("#")[0]);
+  if (MODELS_ROOT && clean.startsWith("/models/")) {
+    const rel = clean.slice("/models/".length);
+    const requested = normalize(join(MODELS_ROOT, rel));
+    if (!requested.startsWith(MODELS_ROOT)) return null;
+    return requested;
+  }
   const requested = normalize(join(ROOT, clean));
   if (!requested.startsWith(ROOT)) return null;
   return requested;
@@ -108,6 +142,10 @@ function tryServeFile(res, filePath) {
   return true;
 }
 
+const createServer = USE_TLS
+  ? (handler) => createHttpsServer(TLS_OPTIONS, handler)
+  : createHttpServer;
+
 const server = createServer((req, res) => {
   if (req.method !== "GET" && req.method !== "HEAD") {
     return send(res, 405, "Method Not Allowed");
@@ -125,12 +163,28 @@ const server = createServer((req, res) => {
 });
 
 server.listen(PORT, HOST, () => {
-  console.log(`Serving ${values.dir}/ at http://${HOST}:${PORT}/`);
+  const base = `${PROTOCOL}://${HOST}:${PORT}`;
+  console.log(`Serving ${values.dir}/ at ${base}/`);
+  if (MODELS_ROOT) {
+    console.log(`Serving ${values.models}/ at ${base}/models/`);
+    console.log(`  → worker.js auto-detects localhost/LAN and routes weights here`);
+  } else {
+    console.log(`  (model weights fetched from local-mode.stratoslab.xyz)`);
+  }
+  if (USE_TLS) {
+    console.log(`  TLS enabled (cert=${values.cert}, key=${values.key})`);
+  }
   console.log("  (Ctrl-C to stop)");
   console.log("");
   console.log("Notes:");
-  console.log("  - WebGPU works over http://localhost (secure context exception).");
-  console.log("  - For LAN access, generate local TLS with mkcert or use a tunnel.");
-  console.log("  - App fetches model weights from local-mode.stratoslab.xyz by default;");
-  console.log("    edit src/worker.js env.remoteHost to point elsewhere if needed.");
+  if (!USE_TLS) {
+    console.log("  - HTTP only: WebGPU works over http://localhost but browsers");
+    console.log("    block it on LAN IPs. Pass --cert + --key for HTTPS.");
+  } else {
+    console.log("  - HTTPS: install the mkcert CA on each LAN device, then");
+    console.log(`    access this server as ${base}/ from anywhere on your LAN.`);
+  }
+  if (!MODELS_ROOT) {
+    console.log("  - Pass --models ./model-files to serve weights from disk too.");
+  }
 });

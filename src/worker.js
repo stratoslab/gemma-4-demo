@@ -9,10 +9,31 @@ import {
 } from "@huggingface/transformers";
 
 const MODEL_ID = "onnx-community/gemma-4-E2B-it-ONNX";
-// Self-hosted on Cloudflare R2 (bucket "local-models" on account
+// Default mirror: Cloudflare R2 (bucket "local-models" on account
 // 91dc1b5ea710fdd043ebbe0b47b418c0, custom domain local-mode.stratoslab.xyz).
 // Files mirrored from https://huggingface.co/${MODEL_ID}/resolve/main.
-const MODEL_BASE_URL = "https://local-mode.stratoslab.xyz";
+//
+// When the app is served from localhost (via `npm run serve -- --models
+// ./model-files`), switch to the same-origin /models path so the whole
+// stack can run air-gapped with zero external dependencies.
+const PAGE_ORIGIN = self.location?.origin ?? "";
+// Treat localhost, LAN IPs, and mDNS names as "local" — when the page is
+// served from any of these, assume a sibling /models/ route exists on
+// the same origin (via `npm run serve -- --models ./model-files`).
+// Public deployments (vision.stratoslab.xyz, etc.) fall through to R2.
+const LOCAL_HOSTNAME_RE =
+  /^(?:localhost|127\.0\.0\.1|\[::1\]|10\.\d{1,3}\.\d{1,3}\.\d{1,3}|172\.(?:1[6-9]|2\d|3[01])\.\d{1,3}\.\d{1,3}|192\.168\.\d{1,3}\.\d{1,3}|[a-z0-9-]+\.local)$/i;
+const PAGE_HOSTNAME = (() => {
+  try {
+    return new URL(PAGE_ORIGIN).hostname;
+  } catch {
+    return "";
+  }
+})();
+const IS_LOCAL_DEV = LOCAL_HOSTNAME_RE.test(PAGE_HOSTNAME);
+const MODEL_BASE_URL = IS_LOCAL_DEV
+  ? `${PAGE_ORIGIN}/models`
+  : "https://local-mode.stratoslab.xyz";
 
 // Point transformers.js at the R2 mirror directly. pathJoin in the fork
 // was patched to drop empty segments, so an empty remotePathTemplate
@@ -131,7 +152,7 @@ globalThis.fetch = async (input, init) => {
         response.status === 404 && url.startsWith(MODEL_BASE_URL);
       postDebug(
         isMissingFromMirror
-          ? `MISSING FROM R2: ${url} → transformers.js will fall back or fail later`
+          ? `MISSING FROM MIRROR (${MODEL_BASE_URL}): ${url} → transformers.js will fall back or fail later`
           : `Fetch failed ${response.status} ${method} ${url}`,
         {
           phase: "fetch",

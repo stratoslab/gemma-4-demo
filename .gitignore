@@ -6,3 +6,9 @@ model-files/
 scripts/go2rtc/go2rtc.exe
 scripts/go2rtc/test-frame.jpg
 scripts/.env
+
+# Local TLS certs generated for intranet HTTPS (mkcert or openssl self-signed).
+# Regenerate with the openssl/mkcert commands in README.md; never commit.
+*.pem
+*.key
+*-key.pem
