@@ -22,7 +22,7 @@ body,
   min-height: 100%;
   background: var(--bg);
   color: var(--text);
-  font-family: "Outfit", system-ui, sans-serif;
+  font-family: "Outfit Variable", "Outfit", system-ui, sans-serif;
 }
 
 button,
@@ -32,7 +32,7 @@ input {
 }
 
 code {
-  font-family: "IBM Plex Mono", "SFMono-Regular", monospace;
+  font-family: "JetBrains Mono Variable", "IBM Plex Mono", "SFMono-Regular", monospace;
 }
 
 img,
@@ -275,6 +275,54 @@ video {
   margin-top: 8px;
 }
 
+.stream-connect {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: min(560px, 100%);
+  margin-top: 4px;
+  padding: 6px 6px 6px 18px;
+  border: 1px solid var(--outline);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.04);
+  backdrop-filter: blur(12px);
+  transition: border-color 0.18s ease, background 0.18s ease;
+  animation: stream-connect-reveal 0.22s ease;
+}
+
+.stream-connect:focus-within {
+  border-color: rgba(0, 217, 255, 0.4);
+  background: rgba(0, 217, 255, 0.05);
+}
+
+.stream-input {
+  flex: 1;
+  min-width: 0;
+  padding: 10px 0;
+  background: transparent;
+  border: 0;
+  outline: 0;
+  color: var(--text);
+  font: inherit;
+  font-size: 0.92rem;
+}
+
+.stream-input::placeholder {
+  color: var(--muted);
+  opacity: 0.7;
+}
+
+@keyframes stream-connect-reveal {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 .glass-button,
 .primary-button,
 .icon-button,
@@ -297,6 +345,12 @@ video {
   padding: 14px 20px;
   background: rgba(255, 255, 255, 0.04);
   color: var(--text);
+}
+
+.glass-button.active {
+  background: rgba(0, 217, 255, 0.12);
+  border-color: rgba(0, 217, 255, 0.45);
+  color: var(--blue);
 }
 
 .primary-button {
@@ -619,7 +673,7 @@ video {
   background: rgba(9, 15, 24, 0.72);
   backdrop-filter: blur(14px) saturate(1.1);
   color: #e6ecf1;
-  font-family: "Outfit", system-ui, sans-serif;
+  font-family: "Outfit Variable", "Outfit", system-ui, sans-serif;
   font-size: 13px;
   box-sizing: border-box;
 }

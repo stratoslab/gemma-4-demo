@@ -21,6 +21,7 @@ FILES=(
   "tokenizer_config.json"
   "tokenizer.json"
   "special_tokens_map.json"
+  "chat_template.jinja"
   "chat_template.json"
   "added_tokens.json"
 

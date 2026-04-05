@@ -317,6 +317,9 @@ function App() {
     "http://localhost:1984/api/stream.m3u8?src=",
   );
   const [streamConnecting, setStreamConnecting] = useState(false);
+  // Landing-page Stream button opens an inline URL row when clicked — we
+  // don't show the input until the user actually chooses streaming mode.
+  const [showStreamInput, setShowStreamInput] = useState(false);
   const [snapshotUrl, setSnapshotUrl] = useState(
     "http://localhost:1984/api/frame.jpeg?src=",
   );
@@ -892,60 +895,67 @@ function App() {
                 local to this browser.
               </p>
               <div className="empty-actions">
-                <button className="glass-button" onClick={startWebcam}>
-                  Start Webcam
-                </button>
-                <button className="glass-button" onClick={startTabCapture}>
-                  Capture Tab
-                </button>
-                <button className="glass-button" onClick={() => fileInputRef.current?.click()}>
-                  Select Video
-                </button>
-              </div>
-              <div className="stream-connect">
-                <input
-                  type="url"
-                  className="stream-input"
-                  placeholder="http://localhost:1984/api/stream.m3u8?src=camera"
-                  value={streamUrl}
-                  onChange={(event) => setStreamUrl(event.target.value)}
-                  onKeyDown={(event) => {
-                    if (event.key === "Enter") {
-                      event.preventDefault();
-                      startHlsStream(streamUrl);
-                    }
-                  }}
-                />
                 <button
-                  className="glass-button compact"
-                  onClick={() => startHlsStream(streamUrl)}
-                  disabled={streamConnecting || !streamUrl.trim()}
-                >
-                  {streamConnecting ? "Connecting…" : "Connect Stream"}
-                </button>
-              </div>
-              <div className="stream-connect">
-                <input
-                  type="url"
-                  className="stream-input"
-                  placeholder="http://localhost:1984/api/frame.jpeg?src=camera"
-                  value={snapshotUrl}
-                  onChange={(event) => setSnapshotUrl(event.target.value)}
-                  onKeyDown={(event) => {
-                    if (event.key === "Enter") {
-                      event.preventDefault();
-                      connectSnapshot();
-                    }
+                  className="glass-button"
+                  onClick={() => {
+                    setShowStreamInput(false);
+                    startWebcam();
                   }}
-                />
-                <button
-                  className="glass-button compact"
-                  onClick={connectSnapshot}
-                  disabled={!snapshotUrl.trim()}
                 >
-                  Use Snapshots
+                  Webcam
+                </button>
+                <button
+                  className="glass-button"
+                  onClick={() => {
+                    setShowStreamInput(false);
+                    startTabCapture();
+                  }}
+                >
+                  Screen share
+                </button>
+                <button
+                  className="glass-button"
+                  onClick={() => {
+                    setShowStreamInput(false);
+                    fileInputRef.current?.click();
+                  }}
+                >
+                  Video
+                </button>
+                <button
+                  className={`glass-button${showStreamInput ? " active" : ""}`}
+                  onClick={() => setShowStreamInput((v) => !v)}
+                >
+                  Stream
                 </button>
               </div>
+              {showStreamInput && (
+                <div className="stream-connect">
+                  <input
+                    type="url"
+                    className="stream-input"
+                    placeholder="http://localhost:1984/api/stream.m3u8?src=camera"
+                    autoFocus
+                    value={streamUrl}
+                    onChange={(event) => setStreamUrl(event.target.value)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter") {
+                        event.preventDefault();
+                        startHlsStream(streamUrl);
+                      } else if (event.key === "Escape") {
+                        setShowStreamInput(false);
+                      }
+                    }}
+                  />
+                  <button
+                    className="glass-button compact"
+                    onClick={() => startHlsStream(streamUrl)}
+                    disabled={streamConnecting || !streamUrl.trim()}
+                  >
+                    {streamConnecting ? "Connecting…" : "Connect"}
+                  </button>
+                </div>
+              )}
               <p className="meta-line">Stratos private demo. Your data stays on this device.</p>
             </div>
           )}

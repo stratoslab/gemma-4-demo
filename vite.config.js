@@ -30,9 +30,9 @@ export default defineConfig({
         icons: [
           {
             src: "/stratos-favicon.png",
-            sizes: "512x512",
+            sizes: "100x100",
             type: "image/png",
-            purpose: "any maskable",
+            purpose: "any",
           },
         ],
       },

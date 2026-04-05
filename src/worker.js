@@ -3,6 +3,7 @@ import {
   Gemma4ForConditionalGeneration,
   InterruptableStoppingCriteria,
   TextStreamer,
+  env,
   load_image,
   read_audio,
 } from "@huggingface/transformers";
@@ -12,13 +13,20 @@ const MODEL_ID = "onnx-community/gemma-4-E2B-it-ONNX";
 // 91dc1b5ea710fdd043ebbe0b47b418c0, custom domain local-mode.stratoslab.xyz).
 // Files mirrored from https://huggingface.co/${MODEL_ID}/resolve/main.
 const MODEL_BASE_URL = "https://local-mode.stratoslab.xyz";
-const HF_MIRROR_PREFIX = `https://huggingface.co/${MODEL_ID}/resolve/main/`;
 
-// transformers.js constructs URLs like
-//   https://huggingface.co/onnx-community/gemma-4-E2B-it-ONNX/resolve/main/<file>
-// We rewrite those to the R2 custom domain in the fetch wrapper below.
-// (We avoid env.remoteHost/remotePathTemplate because the library's pathJoin
-// produces a double-slash when the template is empty.)
+// Point transformers.js at the R2 mirror directly. pathJoin in the fork
+// was patched to drop empty segments, so an empty remotePathTemplate
+// produces <host>/<file> (single slash) instead of <host>//<file>.
+// No runtime fetch wrapping or URL rewriting needed — transformers.js
+// constructs requests for R2 natively.
+env.remoteHost = MODEL_BASE_URL;
+env.remotePathTemplate = "";
+// ORT Web's WASM runtime loads from jsDelivr by default. We leave that
+// alone because Vite hash-renames the wasm asset and doesn't emit the
+// matching `.mjs` loader at a predictable path. To self-host later,
+// copy `ort-wasm-simd-threaded.asyncify.{mjs,wasm}` into public/ with
+// their original names and point `env.backends.onnx.wasm.wasmPaths`
+// at that directory.
 
 const CONNECTIVITY_TARGETS = [
   { label: "Model config", path: "config.json", method: "GET" },
@@ -54,17 +62,37 @@ function postDebug(message, extra = {}) {
   });
 }
 
+// Defense-in-depth: env.remoteHost + pathJoin fix already route
+// transformers.js at R2, but if any URL leaks through to huggingface.co
+// (API metadata endpoints, Xet CDN redirects, etc.) we want to surface
+// it loudly rather than silently fall through.
+const HF_HOST_RE = /^https?:\/\/(?:[a-z0-9-]+\.)?(?:huggingface\.co|hf\.co)\//i;
+const HF_MODEL_PREFIX = "onnx-community/gemma-4-E2B-it-ONNX/resolve/main/";
+
 function rewriteToR2(url) {
-  // Redirect huggingface.co/<MODEL_ID>/resolve/main/<file> → R2 custom domain
-  if (typeof url === "string" && url.startsWith(HF_MIRROR_PREFIX)) {
-    return `${MODEL_BASE_URL}/${url.slice(HF_MIRROR_PREFIX.length)}`;
+  if (typeof url !== "string") return url;
+  // huggingface.co/<MODEL_ID>/resolve/main/<file> → R2
+  if (url.includes(HF_MODEL_PREFIX)) {
+    const rel = url.split(HF_MODEL_PREFIX, 2)[1].split("?", 1)[0];
+    return `${MODEL_BASE_URL}/${rel}`;
   }
   return url;
+}
+
+function logExternalLeak(url) {
+  if (typeof url === "string" && HF_HOST_RE.test(url)) {
+    postDebug(`EXTERNAL LEAK: request still going to huggingface.co → ${url}`, {
+      phase: "fetch",
+      leak: true,
+      url,
+    });
+  }
 }
 
 globalThis.fetch = async (input, init) => {
   const originalUrl =
     typeof input === "string" ? input : input?.url ?? String(input);
+  logExternalLeak(originalUrl);
   const rewrittenUrl = rewriteToR2(originalUrl);
 
   // If we rewrote, reconstruct the fetch argument
@@ -96,15 +124,26 @@ globalThis.fetch = async (input, init) => {
     const contentType = response.headers.get("content-type") ?? "unknown";
 
     if (!response.ok) {
-      postDebug(`Fetch failed ${response.status} ${method} ${url}`, {
-        phase: "fetch",
-        url,
-        method,
-        status: response.status,
-        contentLength,
-        contentRange,
-        contentType,
-      });
+      // Loud flag for files that should be in R2 but aren't. transformers.js
+      // silently falls back to null for optional files, so these get masked
+      // unless we surface them here.
+      const isMissingFromMirror =
+        response.status === 404 && url.startsWith(MODEL_BASE_URL);
+      postDebug(
+        isMissingFromMirror
+          ? `MISSING FROM R2: ${url} → transformers.js will fall back or fail later`
+          : `Fetch failed ${response.status} ${method} ${url}`,
+        {
+          phase: "fetch",
+          url,
+          method,
+          status: response.status,
+          contentLength,
+          contentRange,
+          contentType,
+          missingFromMirror: isMissingFromMirror || undefined,
+        },
+      );
     } else {
       postDebug(`Fetch ok ${response.status} ${method} ${url}`, {
         phase: "fetch",
