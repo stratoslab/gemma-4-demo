@@ -7,36 +7,84 @@ import {
 } from "@huggingface/transformers";
 
 const MODEL_ID = "onnx-community/gemma-4-E2B-it-ONNX";
-const CONNECTIVITY_URLS = [
-  "https://huggingface.co/onnx-community/gemma-4-E2B-it-ONNX/resolve/main/config.json",
-  "https://huggingface.co/onnx-community/gemma-4-E2B-it-ONNX/resolve/main/processor_config.json",
+const MODEL_BASE_URL = `https://huggingface.co/${MODEL_ID}/resolve/main`;
+const CONNECTIVITY_TARGETS = [
+  { label: "Model config", path: "config.json", method: "GET" },
+  { label: "Generation config", path: "generation_config.json", method: "GET" },
+  { label: "Processor config", path: "processor_config.json", method: "GET" },
+  { label: "Preprocessor config", path: "preprocessor_config.json", method: "GET" },
+  { label: "Tokenizer config", path: "tokenizer_config.json", method: "GET" },
+  { label: "Tokenizer", path: "tokenizer.json", method: "RANGE" },
+  { label: "Audio encoder", path: "onnx/audio_encoder_fp16.onnx", method: "RANGE" },
+  { label: "Audio encoder data", path: "onnx/audio_encoder_fp16.onnx_data", method: "RANGE" },
+  { label: "Vision encoder", path: "onnx/vision_encoder_fp16.onnx", method: "RANGE" },
+  { label: "Vision encoder data", path: "onnx/vision_encoder_fp16.onnx_data", method: "RANGE" },
+  { label: "Embed tokens", path: "onnx/embed_tokens_q4f16.onnx", method: "RANGE" },
+  { label: "Embed tokens data", path: "onnx/embed_tokens_q4f16.onnx_data", method: "RANGE" },
+  { label: "Decoder merged", path: "onnx/decoder_model_merged_q4f16.onnx", method: "RANGE" },
+  {
+    label: "Decoder merged data",
+    path: "onnx/decoder_model_merged_q4f16.onnx_data",
+    method: "RANGE",
+  },
 ];
 
 const originalFetch = globalThis.fetch.bind(globalThis);
 
+function postDebug(message, extra = {}) {
+  self.postMessage({
+    status: "debug",
+    data: {
+      message,
+      timestamp: new Date().toISOString(),
+      ...extra,
+    },
+  });
+}
+
 globalThis.fetch = async (input, init) => {
   const url = typeof input === "string" ? input : input?.url ?? String(input);
+  const method =
+    init?.method ?? (typeof Request !== "undefined" && input instanceof Request ? input.method : "GET");
+
+  postDebug(`Fetch start ${method} ${url}`, { phase: "fetch", url, method });
   try {
     const response = await originalFetch(input, init);
+    const contentLength = response.headers.get("content-length") ?? "unknown";
+    const contentRange = response.headers.get("content-range") ?? "none";
+    const contentType = response.headers.get("content-type") ?? "unknown";
+
     if (!response.ok) {
-      self.postMessage({
-        status: "debug",
-        data: {
-          phase: "fetch",
-          message: `Fetch failed (${response.status}) for ${url}`,
-          url,
-        },
+      postDebug(`Fetch failed ${response.status} ${method} ${url}`, {
+        phase: "fetch",
+        url,
+        method,
+        status: response.status,
+        contentLength,
+        contentRange,
+        contentType,
       });
-    } else if (!response.headers.get("content-length")) {
-      self.postMessage({
-        status: "debug",
-        data: {
-          phase: "fetch",
-          message: `No content-length header for ${url}`,
-          url,
-        },
+    } else {
+      postDebug(`Fetch ok ${response.status} ${method} ${url}`, {
+        phase: "fetch",
+        url,
+        method,
+        status: response.status,
+        contentLength,
+        contentRange,
+        contentType,
       });
     }
+
+    if (!response.headers.get("content-length")) {
+      postDebug(`No content-length header for ${url}`, {
+        phase: "fetch",
+        url,
+        method,
+        status: response.status,
+      });
+    }
+
     return response;
   } catch (error) {
     self.postMessage({
@@ -252,19 +300,71 @@ async function generate(messages, enableThinking) {
 
 async function runConnectivityCheck() {
   const results = [];
-  for (const url of CONNECTIVITY_URLS) {
+  for (const target of CONNECTIVITY_TARGETS) {
+    const url = `${MODEL_BASE_URL}/${target.path}`;
+    const init =
+      target.method === "RANGE"
+        ? {
+            method: "GET",
+            headers: {
+              Range: "bytes=0-0",
+            },
+          }
+        : { method: "GET" };
+
+    postDebug(`Connectivity probe start ${target.label} ${target.method} ${url}`, {
+      phase: "connectivity",
+      label: target.label,
+      method: target.method,
+      url,
+    });
+
     try {
-      const response = await originalFetch(url, { method: "HEAD" });
+      const response = await originalFetch(url, init);
+      const contentLength = response.headers.get("content-length") ?? "unknown";
+      const contentRange = response.headers.get("content-range") ?? "none";
+      const contentType = response.headers.get("content-type") ?? "unknown";
+
       results.push({
+        label: target.label,
         url,
+        method: target.method,
         ok: response.ok,
         status: response.status,
+        contentLength,
+        contentRange,
+        contentType,
+        finalUrl: response.url,
       });
+
+      postDebug(
+        `Connectivity probe ${response.ok ? "ok" : "failed"} ${target.label} ${response.status} ${url}`,
+        {
+          phase: "connectivity",
+          label: target.label,
+          method: target.method,
+          url,
+          status: response.status,
+          contentLength,
+          contentRange,
+          contentType,
+        },
+      );
     } catch (error) {
       results.push({
+        label: target.label,
         url,
+        method: target.method,
         ok: false,
         status: "network-error",
+        error: error instanceof Error ? error.message : String(error),
+      });
+
+      postDebug(`Connectivity probe error ${target.label} ${url}`, {
+        phase: "connectivity",
+        label: target.label,
+        method: target.method,
+        url,
         error: error instanceof Error ? error.message : String(error),
       });
     }

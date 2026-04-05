@@ -119,7 +119,7 @@ function DiagnosticsPanel({ loadingMessage, errorMessage, diagnostics }) {
       </div>
       {loadingMessage ? <div className="diagnostics-line">{loadingMessage}</div> : null}
       {errorMessage ? <div className="diagnostics-line strong">{errorMessage}</div> : null}
-      {diagnostics.slice(-4).map((line) => (
+      {diagnostics.slice(-12).map((line) => (
         <div key={line} className="diagnostics-line">
           {line}
         </div>
@@ -139,7 +139,12 @@ function ConnectivityResults({ results }) {
       <div className="diagnostics-title">Connectivity check</div>
       {results.map((result) => (
         <div key={result.url} className="diagnostics-line">
-          {result.ok ? "OK" : "FAIL"} {result.status} {result.url}
+          {result.ok ? "OK" : "FAIL"} {result.status} {result.label ? `${result.label} • ` : ""}
+          {result.method ? `${result.method} • ` : ""}
+          {result.url}
+          {result.contentLength ? ` • bytes=${result.contentLength}` : ""}
+          {result.contentRange && result.contentRange !== "none" ? ` • range=${result.contentRange}` : ""}
+          {result.contentType ? ` • type=${result.contentType}` : ""}
           {result.error ? ` — ${result.error}` : ""}
         </div>
       ))}
@@ -212,6 +217,13 @@ function App() {
 
   const starterExamples = useMemo(() => EXAMPLES, []);
 
+  const appendDiagnostic = (message) => {
+    const timestamp = new Date().toLocaleTimeString("en-US", {
+      hour12: false,
+    });
+    setDiagnostics((current) => [...current.slice(-23), `[${timestamp}] ${message}`]);
+  };
+
   useEffect(() => {
     const worker = workerRef.current;
     if (!worker) {
@@ -232,21 +244,16 @@ function App() {
           setProgress(event.data.progress ?? 0);
           break;
         case "debug":
-          setDiagnostics((current) => [
-            ...current.slice(-9),
-            event.data.data?.message ?? "Worker update received.",
-          ]);
+          appendDiagnostic(event.data.data?.message ?? "Worker update received.");
           break;
         case "ready":
           setPhase("app");
           setLoadingMessage("Model ready.");
+          appendDiagnostic("Model ready.");
           break;
         case "connectivity-result":
           setConnectivityResults(event.data.data ?? []);
-          setDiagnostics((current) => [
-            ...current.slice(-9),
-            "Connectivity check completed.",
-          ]);
+          appendDiagnostic("Connectivity check completed.");
           break;
         case "start":
           setIsRunning(true);
@@ -288,7 +295,7 @@ function App() {
         case "error":
           setMediaError(data);
           setIsRunning(false);
-          setDiagnostics((current) => [...current.slice(-9), `Error: ${data}`]);
+          appendDiagnostic(`Error: ${data}`);
           break;
         default:
           break;
@@ -320,7 +327,7 @@ function App() {
 
   const runConnectivityCheck = () => {
     setConnectivityResults([]);
-    setDiagnostics((current) => [...current.slice(-9), "Running connectivity check..."]);
+    appendDiagnostic("Running connectivity check...");
     workerRef.current?.postMessage({ type: "connectivity-check" });
   };
 
