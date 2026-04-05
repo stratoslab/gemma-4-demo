@@ -45,6 +45,35 @@ function LoadingScreen({ progress }) {
   );
 }
 
+function DiagnosticsPanel({ loadingMessage, errorMessage, diagnostics }) {
+  const extensionHint =
+    /ERR_BLOCKED_BY_CLIENT|blocked by client|SES|lockdown-install/i.test(
+      `${errorMessage} ${loadingMessage} ${diagnostics.join(" ")}`,
+    )
+      ? "A browser extension may be blocking requests. Test in an incognito window or with extensions disabled."
+      : null;
+
+  if (!loadingMessage && !errorMessage && diagnostics.length === 0) {
+    return null;
+  }
+
+  return (
+    <div className={`diagnostics ${errorMessage ? "error" : ""}`}>
+      <div className="diagnostics-title">
+        {errorMessage ? "Runtime issue detected" : "Model loading diagnostics"}
+      </div>
+      {loadingMessage ? <div className="diagnostics-line">{loadingMessage}</div> : null}
+      {errorMessage ? <div className="diagnostics-line strong">{errorMessage}</div> : null}
+      {diagnostics.slice(-4).map((line) => (
+        <div key={line} className="diagnostics-line">
+          {line}
+        </div>
+      ))}
+      {extensionHint ? <div className="diagnostics-hint">{extensionHint}</div> : null}
+    </div>
+  );
+}
+
 function MessageBubble({ message }) {
   return (
     <div className={`bubble-row ${message.role === "user" ? "user" : "assistant"}`}>
@@ -95,6 +124,7 @@ function App() {
   const [mediaError, setMediaError] = useState("");
   const [scanFrame, setScanFrame] = useState(null);
   const [recording, setRecording] = useState(false);
+  const [diagnostics, setDiagnostics] = useState([]);
 
   const mediaStreamRef = useRef(null);
   const videoObjectUrlRef = useRef(null);
@@ -127,8 +157,15 @@ function App() {
         case "progress":
           setProgress(event.data.progress ?? 0);
           break;
+        case "debug":
+          setDiagnostics((current) => [
+            ...current.slice(-9),
+            event.data.data?.message ?? "Worker update received.",
+          ]);
+          break;
         case "ready":
           setPhase("app");
+          setLoadingMessage("Model ready.");
           break;
         case "start":
           setIsRunning(true);
@@ -170,6 +207,7 @@ function App() {
         case "error":
           setMediaError(data);
           setIsRunning(false);
+          setDiagnostics((current) => [...current.slice(-9), `Error: ${data}`]);
           break;
         default:
           break;
@@ -403,6 +441,11 @@ function App() {
           )}
 
           <div className="chat-shell">
+            <DiagnosticsPanel
+              loadingMessage={loadingMessage}
+              errorMessage={mediaError}
+              diagnostics={diagnostics}
+            />
             <div className="chat-log" ref={chatScrollRef}>
               {messages.length === 0 && (
                 <div className="example-list">

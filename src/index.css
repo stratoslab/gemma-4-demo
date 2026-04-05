@@ -299,6 +299,40 @@ video {
   gap: 14px;
 }
 
+.diagnostics {
+  padding: 12px 14px;
+  border-radius: 18px;
+  border: 1px solid var(--outline);
+  background: rgba(9, 15, 24, 0.82);
+  color: var(--muted);
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+
+.diagnostics.error {
+  border-color: rgba(252, 93, 13, 0.45);
+  background: rgba(44, 18, 10, 0.82);
+}
+
+.diagnostics-title {
+  margin-bottom: 6px;
+  color: var(--text);
+  font-weight: 700;
+}
+
+.diagnostics-line + .diagnostics-line {
+  margin-top: 4px;
+}
+
+.diagnostics-line.strong {
+  color: #ffd4c2;
+}
+
+.diagnostics-hint {
+  margin-top: 10px;
+  color: var(--text);
+}
+
 .chat-log {
   max-height: min(48vh, 520px);
   overflow-y: auto;

@@ -41,6 +41,18 @@ class ModelSession {
         },
         device: "webgpu",
         progress_callback: (info) => {
+          self.postMessage({
+            status: "debug",
+            data: {
+              phase: "progress",
+              message:
+                info.status === "download"
+                  ? `Downloading ${info.name ?? "model file"}...`
+                  : info.status === "progress_total"
+                    ? `Loading model assets: ${Math.round(info.progress ?? 0)}%`
+                    : `Model loader status: ${info.status}`,
+            },
+          });
           if (info.status === "progress_total") {
             self.postMessage({
               status: "progress",
@@ -232,4 +244,20 @@ self.addEventListener("message", async (event) => {
     });
     self.postMessage({ status: "complete", numTokens: 0, tps: 0 });
   }
+});
+
+self.addEventListener("error", (event) => {
+  self.postMessage({
+    status: "error",
+    data: event.message || "Worker error",
+  });
+});
+
+self.addEventListener("unhandledrejection", (event) => {
+  const reason =
+    event.reason instanceof Error ? event.reason.message : String(event.reason);
+  self.postMessage({
+    status: "error",
+    data: reason,
+  });
 });
