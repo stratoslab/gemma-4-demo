@@ -314,14 +314,14 @@ function App() {
   const [scanFrame, setScanFrame] = useState(null);
   const [recording, setRecording] = useState(false);
   const [streamUrl, setStreamUrl] = useState(
-    "http://localhost:1984/api/stream.m3u8?src=",
+    "https://localhost:1985/api/stream.m3u8?src=",
   );
   const [streamConnecting, setStreamConnecting] = useState(false);
   // Landing-page Stream button opens an inline URL row when clicked — we
   // don't show the input until the user actually chooses streaming mode.
   const [showStreamInput, setShowStreamInput] = useState(false);
   const [snapshotUrl, setSnapshotUrl] = useState(
-    "http://localhost:1984/api/frame.jpeg?src=",
+    "https://localhost:1985/api/frame.jpeg?src=",
   );
   const [lastSnapshot, setLastSnapshot] = useState(null);
 
@@ -934,7 +934,7 @@ function App() {
                   <input
                     type="url"
                     className="stream-input"
-                    placeholder="http://localhost:1984/api/stream.m3u8?src=camera"
+                    placeholder="https://localhost:1985/api/stream.m3u8?src=camera"
                     autoFocus
                     value={streamUrl}
                     onChange={(event) => setStreamUrl(event.target.value)}

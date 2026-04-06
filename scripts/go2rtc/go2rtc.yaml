@@ -1,8 +1,9 @@
 # go2rtc configuration — RTSP gateway for Stratos Vision
 #
 # Streams are pulled from RTSP cameras and republished as HLS, WebRTC, etc.
-# The app at https://vision.stratoslab.xyz fetches HLS at:
-#   http://localhost:1984/api/stream.m3u8?src=<name>
+# The app fetches HLS at one of:
+#   https://localhost:1985/api/stream.m3u8?src=<name>   (TLS, no mixed-content warning)
+#   http://localhost:1984/api/stream.m3u8?src=<name>    (plain, localhost exemption)
 
 # --- Streams ---
 # Add one entry per camera.
@@ -18,6 +19,17 @@ streams:
 # --- HTTP API + HLS ---
 api:
   listen: :1984
+  # TLS listener on a second port. Uses the same cert generated for the
+  # local Node server (covers localhost, 127.0.0.1, 192.168.0.145).
+  # Generate with:
+  #   MSYS2_ARG_CONV_EXCL="*" openssl req -x509 -newkey rsa:2048 -nodes \
+  #     -keyout 192.168.0.145-key.pem -out 192.168.0.145.pem -days 365 \
+  #     -subj "/CN=192.168.0.145" \
+  #     -addext "subjectAltName=IP:192.168.0.145,IP:127.0.0.1,DNS:localhost"
+  # Then copy the two .pem files into this directory (scripts/go2rtc/).
+  tls_listen: :1985
+  tls_cert: ../../192.168.0.145.pem
+  tls_key: ../../192.168.0.145-key.pem
   # CORS: allow the deployed app (https) + local dev. go2rtc echoes the
   # request Origin if it matches; "*" wildcards also work.
   origin: "*"
